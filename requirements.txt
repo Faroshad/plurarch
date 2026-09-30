@@ -1,0 +1,7 @@
+# Python 3.13 venv:  py -3.13 -m venv .venv ; .venv\Scripts\python.exe -m pip install -r requirements.txt
+# Direct dependencies, exact versions (verified 2026-09-30). Everything else is the standard library.
+mcp==2.2.0
+httpx==0.28.1
+jsonschema==4.26.0
+qrcode==8.2
+pillow==12.3.0

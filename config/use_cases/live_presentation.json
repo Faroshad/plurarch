@@ -1,0 +1,16 @@
+{
+  "id": "live_presentation",
+  "label": "Live presentation",
+  "session_title": "Plurarch live session",
+  "poll_interval_s": 4,
+  "poll_jitter_s": 1.5,
+  "round_duration_s": 60,
+  "expected_participants": 100,
+  "max_participants": 300,
+  "projection_scale": 1.4,
+  "agent_timeout_s": 120,
+  "agent_model": "sonnet",
+  "privacy_notice": "You are anonymous. Only your votes are recorded, for this session only. No names, no accounts, no tracking.",
+  "facilitator_label": "Facilitator",
+  "participant_label": "Participant"
+}

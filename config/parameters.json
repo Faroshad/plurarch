@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "parameters": [
+    {
+      "key": "facade_material",
+      "label": "Façade material",
+      "question": "Which façade material?",
+      "explainer": "The skin of the pavilion: its fins and panels.",
+      "type": "choice",
+      "options": [
+        { "value": "timber", "label": "Timber", "icon": "trees" },
+        { "value": "concrete", "label": "Concrete", "icon": "brick-wall" },
+        { "value": "glass", "label": "Glass", "icon": "panels-top-left" }
+      ],
+      "default": "timber"
+    },
+    {
+      "key": "window_ratio",
+      "label": "Window ratio",
+      "question": "How much of the wall is window?",
+      "explainer": "Share of the façade that is glazing.",
+      "type": "slider",
+      "min": 20,
+      "max": 60,
+      "step": 5,
+      "unit": "%",
+      "default": 40
+    },
+    {
+      "key": "roof_angle",
+      "label": "Roof angle",
+      "question": "How steep is the roof?",
+      "explainer": "Pitch of the mono-pitch roof. Steeper roofs overhang more.",
+      "type": "slider",
+      "min": 0,
+      "max": 35,
+      "step": 5,
+      "unit": "°",
+      "default": 15
+    },
+    {
+      "key": "canopy_depth",
+      "label": "Canopy depth",
+      "question": "How deep is the entrance canopy?",
+      "explainer": "How far the canopy reaches out over the entrance.",
+      "type": "slider",
+      "min": 0,
+      "max": 3,
+      "step": 0.5,
+      "unit": "m",
+      "default": 1.5
+    }
+  ]
+}

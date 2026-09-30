@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "title": "Plurarch pavilion",
+  "narrative": "A small public pavilion (18 m x 10 m, one room) for talks and exhibitions, in a hot, sunny climate. It should stay comfortable without heavy air-conditioning, feel open and daylit, stay within a modest budget, and keep its embodied carbon low.",
+  "climate": "hot and sunny",
+  "metrics_note": "All metrics are indicative proxies computed from simple, documented formulas (design_mcp/metrics.py). They are not simulations.",
+
+  "goals": [
+    {
+      "id": "daylight",
+      "metric": "daylight",
+      "label": "Daylight",
+      "unit": "index",
+      "direction": "min",
+      "threshold": 50,
+      "plain": "The room must get enough daylight (daylight index at least 50)."
+    },
+    {
+      "id": "cooling",
+      "metric": "cooling",
+      "label": "Cooling load",
+      "unit": "index",
+      "direction": "max",
+      "threshold": 62,
+      "plain": "The building must not overheat (cooling index at most 62)."
+    },
+    {
+      "id": "cost",
+      "metric": "cost",
+      "label": "Cost",
+      "unit": "index",
+      "direction": "max",
+      "threshold": 100,
+      "plain": "It must stay within budget (cost index at most 100)."
+    },
+    {
+      "id": "carbon",
+      "metric": "carbon",
+      "label": "Embodied carbon",
+      "unit": "index",
+      "direction": "max",
+      "threshold": 90,
+      "plain": "Embodied carbon must stay low (carbon index at most 90)."
+    }
+  ],
+
+  "close_tradeoff_margin": 3,
+  "close_tradeoff_note": "A goal missed by no more than this many index points is 'marginal': the trade-off is close, so the participants' choice wins.",
+
+  "hard_rules": [
+    {
+      "id": "min_window_ratio",
+      "label": "Window ratio at least 25%",
+      "plain": "Windows must cover at least 25% of the wall, for minimum daylight.",
+      "if": [],
+      "then": { "param": "window_ratio", "op": ">=", "value": 25 }
+    },
+    {
+      "id": "glass_needs_shading",
+      "label": "Glass façade with 50%+ windows needs shading",
+      "plain": "In this hot climate, a glass façade with 50% or more windows needs real shading: a shading fraction of at least 0.35 from the roof overhang and the canopy.",
+      "if": [
+        { "param": "facade_material", "op": "==", "value": "glass" },
+        { "param": "window_ratio", "op": ">=", "value": 50 }
+      ],
+      "then": { "metric": "shading", "op": ">=", "value": 0.35 }
+    }
+  ],
+
+  "consensus": {
+    "strong": 0.70,
+    "weak": 0.50,
+    "leading_option_gap": 0.10,
+    "slider_band_steps": 1,
+    "note": "Consensus is the winner's share for choice questions, and the share of votes within one step of the median for sliders. Strong (>= 0.70): keep the value unless a hard rule forces a change. Weak (< 0.50): the agent may compromise between leading options (options within 0.10 of the winner's share)."
+  },
+
+  "modification_limits": {
+    "max_changed_parameters": 2,
+    "max_slider_steps": 3,
+    "choice_change": "only_to_leading_option_under_weak_consensus",
+    "note": "A modification is 'reasonable' only within these limits. If no valid design exists within them, the verdict is REJECTED."
+  },
+
+  "agent_limits": {
+    "max_evaluate_calls": 5,
+    "verify_evaluate_exempt": true,
+    "note": "Up to 5 evaluate calls to explore. One extra evaluate call after set_parameters is allowed for verification."
+  }
+}

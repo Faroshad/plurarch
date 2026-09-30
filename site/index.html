@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="format-detection" content="telephone=no">
+  <title>Plurarch · vote on the design</title>
+  <meta name="description" content="Vote on the design of the pavilion. Anonymous, no account needed.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%231A1A1A'/%3E%3Cpath d='M6 13.5L22 8.5M8.5 15.4V21.5M12.5 14.2V21.5M16.5 12.9V21.5M20.5 11.7V21.5' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+  <!-- Inter, loaded without blocking rendering; system-ui is the fallback if Google Fonts is unreachable -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <!-- three.js for the 3D view (loaded lazily by js/viewer3d.js, only when the model is shown).
+       The third entry swaps the unminified core that three.module.min.js imports for jsDelivr's minified copy. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.js": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.min.js"
+    }
+  }
+  </script>
+  <script src="config.js"></script>
+  <script type="module" src="js/participant.js"></script>
+</head>
+<body class="p-body">
+  <header class="p-header">
+    <div class="p-wrap">
+      <span id="brand" aria-label="Plurarch"></span>
+      <div class="p-pills">
+        <span id="net-pill" class="pill" hidden></span>
+        <span id="round-pill" class="pill">Connecting…</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="p-main">
+    <div id="view" class="p-wrap">
+      <div class="p-hero">
+        <h1 class="p-state-title">Connecting…</h1>
+        <p class="p-state-text">Getting the session ready.</p>
+      </div>
+    </div>
+    <div id="info" class="p-wrap"></div>
+  </main>
+
+  <div id="bar" class="p-bottom" hidden>
+    <button id="bar-btn" class="btn btn-ink" type="button">Next</button>
+  </div>
+
+  <div id="announce" class="sr-only" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <div class="p-wrap"><p class="p-state-text">This page needs JavaScript to vote.</p></div>
+  </noscript>
+</body>
+</html>

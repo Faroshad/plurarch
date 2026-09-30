@@ -1,0 +1,98 @@
+# Deploys the static participant app and facilitator console to GitHub Pages.
+#
+# Published artifact = site/ + a copy of the repo config/ folder as config/ inside it
+# (the pages fetch config/parameters.json etc. at runtime, see docs/ARCHITECTURE.md),
+# EXCLUDING config/local.json (machine-specific paths; never published) and any stray
+# secrets or dotfiles. A .nojekyll marker is added.
+#
+# One-time repo setting: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Action majors verified on 2026-09-30: checkout v7, configure-pages v6,
+# upload-pages-artifact v5 (has include-hidden-files), deploy-pages v5.
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; let an in-progress deployment finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Assemble the site (site/ + config/ without local.json)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f site/index.html || { echo "::error::site/index.html is missing"; exit 1; }
+          rm -rf _site
+          mkdir -p _site/config
+          cp -R site/. _site/
+          cp -R config/. _site/config/
+          # never publish machine-specific or secret files
+          find _site/config -name 'local.json' -print -delete
+          find _site -type f \( -name '.env' -o -name '.env.*' -o -name '*.local.json' \) -print -delete
+          # drop every other dotfile / dot-directory, then add the Jekyll opt-out marker
+          find _site -mindepth 1 -name '.*' -prune -print -exec rm -rf {} +
+          touch _site/.nojekyll
+          # final guards
+          if [ -e _site/config/local.json ]; then echo "::error::config/local.json would be published"; exit 1; fi
+          echo "Published files:"; find _site -type f | sort
+
+      - name: Refuse to publish a secret key
+        shell: bash
+        run: |
+          # Fails on a real new-style secret key (sb_secret_...) or on a legacy JWT whose
+          # payload says role=service_role. Mentioning the words in a comment is fine.
+          python3 - <<'PY'
+          import base64, json, pathlib, re, sys
+          jwt = re.compile(rb"eyJ[A-Za-z0-9_-]{10,}\.(eyJ[A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}")
+          secret = re.compile(rb"sb_secret_[A-Za-z0-9_-]{16,}")
+          bad = []
+          for path in pathlib.Path("_site").rglob("*"):
+              if not path.is_file():
+                  continue
+              data = path.read_bytes()
+              if secret.search(data):
+                  bad.append(f"{path}: sb_secret_ key")
+              for m in jwt.finditer(data):
+                  part = m.group(1) + b"=" * (-len(m.group(1)) % 4)
+                  try:
+                      claims = json.loads(base64.urlsafe_b64decode(part))
+                  except Exception:
+                      continue
+                  if isinstance(claims, dict) and claims.get("role") == "service_role":
+                      bad.append(f"{path}: service_role JWT")
+          if bad:
+              print("::error::secret key found in the site: " + "; ".join(bad))
+              sys.exit(1)
+          print("No secret keys in the published files.")
+          PY
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+          include-hidden-files: true   # keeps .nojekyll (the only dotfile left)
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="robots" content="noindex">
+  <title>Plurarch · facilitator console</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%231A1A1A'/%3E%3Cpath d='M6 13.5L22 8.5M8.5 15.4V21.5M12.5 14.2V21.5M16.5 12.9V21.5M20.5 11.7V21.5' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script type="module" src="js/console.js"></script>
+</head>
+<body class="c-body">
+  <div id="boot" class="boot" role="status">Loading the console…</div>
+
+  <!-- Login gate -->
+  <div id="login" class="login" hidden>
+    <form id="login-form" class="login-card" novalidate>
+      <span id="login-brand"></span>
+      <div>
+        <h1 class="t-display">Facilitator console</h1>
+        <p class="meta-line" style="margin-top: 10px">Sign in to open and close rounds and follow the reviewer agent.</p>
+      </div>
+      <div id="login-fields"></div>
+      <p id="login-error" class="form-error" role="alert"></p>
+      <button id="login-btn" class="btn btn-ink" type="submit">Sign in</button>
+      <p id="login-help" class="login-help"></p>
+    </form>
+  </div>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <div id="top-brand"></div>
+      <div class="topbar-center"><span id="top-session" class="pill">Session</span></div>
+      <div class="topbar-right">
+        <span id="conn" class="conn" data-state="reconnecting" role="status" aria-live="polite">
+          <span class="conn-dot" aria-hidden="true"></span><span id="conn-text">Connecting</span>
+        </span>
+        <div class="avatar-wrap">
+          <button id="avatar" class="avatar" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" aria-label="Facilitator menu">F</button>
+          <div id="menu" class="menu" role="menu" hidden>
+            <div id="menu-who" class="menu-who"></div>
+            <button id="sign-out" class="btn btn-gray" type="button" role="menuitem">
+              <i data-lucide="log-out" class="icon icon-18 icon-ph" width="18" height="18" stroke-width="2" aria-hidden="true" data-fallback="⇥"></i>Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar" aria-label="Session">
+        <div class="session-block">
+          <div class="session-tile"><img src="img/initial-design.svg" alt="" width="1064" height="524" decoding="async"></div>
+          <div id="side-title" class="session-name">Session</div>
+          <div id="side-meta" class="session-meta"></div>
+        </div>
+        <div class="stat-pair">
+          <div class="stat-tile"><span class="t-label">Participants</span><span id="side-participants" class="value">–</span><span class="sub">this session</span></div>
+          <div class="stat-tile"><span class="t-label">Rounds</span><span id="side-rounds" class="value">–</span><span id="side-rounds-sub" class="sub"></span></div>
+        </div>
+        <nav class="nav" aria-label="Sections">
+          <a class="nav-item" href="#live" data-section="live" aria-current="true">
+            <i data-lucide="radio" class="icon icon-20 icon-ph" width="20" height="20" stroke-width="1.8" aria-hidden="true"></i>
+            <span class="nav-label">Live session</span><span class="nav-dot" aria-hidden="true"></span>
+          </a>
+          <a class="nav-item" href="#trace" data-section="trace">
+            <i data-lucide="scroll-text" class="icon icon-20 icon-ph" width="20" height="20" stroke-width="1.8" aria-hidden="true"></i>
+            <span class="nav-label">Trace</span><span id="nav-count-trace" class="nav-count" hidden></span><span class="nav-dot" aria-hidden="true"></span>
+          </a>
+          <a class="nav-item" href="#decisions" data-section="decisions">
+            <i data-lucide="gavel" class="icon icon-20 icon-ph" width="20" height="20" stroke-width="1.8" aria-hidden="true"></i>
+            <span class="nav-label">Decisions</span><span id="nav-count-decisions" class="nav-count" hidden></span><span class="nav-dot" aria-hidden="true"></span>
+          </a>
+          <a class="nav-item" href="#brief" data-section="brief">
+            <i data-lucide="file-text" class="icon icon-20 icon-ph" width="20" height="20" stroke-width="1.8" aria-hidden="true"></i>
+            <span class="nav-label">Brief</span><span class="nav-dot" aria-hidden="true"></span>
+          </a>
+        </nav>
+        <div class="sidebar-foot">
+          <button id="side-projection" class="btn btn-gray btn-projection" type="button" role="switch" aria-checked="false">
+            <span class="lbl"><i data-lucide="projector" class="icon icon-18 icon-ph" width="18" height="18" stroke-width="2" aria-hidden="true"></i>Projection mode</span>
+            <span class="toggle" aria-hidden="true"></span>
+          </button>
+        </div>
+      </aside>
+
+      <main id="main" class="main">
+        <!-- Live session -->
+        <section id="live" class="section" aria-labelledby="live-title">
+          <div class="page-header">
+            <div>
+              <h1 id="live-title" class="t-display">Live session</h1>
+              <p id="meta-line" class="meta-line"></p>
+            </div>
+            <div id="join" class="join-card" hidden></div>
+          </div>
+
+          <div class="card main-card">
+            <div class="viz-col" style="min-width: 0">
+              <div class="toolbar">
+                <div id="seg-rounds" class="seg" role="group" aria-label="Round"></div>
+                <div id="seg-questions" class="seg" role="group" aria-label="Question"></div>
+                <span class="spacer"></span>
+                <div class="toolbar-actions">
+                  <span id="timer" class="timer" hidden></span>
+                  <button id="round-btn" class="btn btn-ring" type="button" disabled>Open round</button>
+                  <button id="tb-projection" class="icon-btn" type="button" aria-pressed="false" aria-label="Projection mode" title="Projection mode">
+                    <i data-lucide="projector" class="icon icon-18 icon-ph" width="18" height="18" stroke-width="2" aria-hidden="true" data-fallback="▣"></i>
+                  </button>
+                  <button id="tb-refresh" class="icon-btn" type="button" aria-label="Refresh" title="Refresh">
+                    <i data-lucide="refresh-cw" class="icon icon-18 icon-ph" width="18" height="18" stroke-width="2" aria-hidden="true" data-fallback="↻"></i>
+                  </button>
+                  <button id="tb-trace" class="icon-btn" type="button" aria-label="Trace" title="Trace">
+                    <i data-lucide="scroll-text" class="icon icon-18 icon-ph" width="18" height="18" stroke-width="2" aria-hidden="true" data-fallback="≡"></i>
+                    <span id="tb-trace-count" class="count-badge" hidden></span>
+                    <span id="tb-trace-dot" class="new-dot" hidden></span>
+                  </button>
+                </div>
+              </div>
+              <div class="viz-head">
+                <span id="viz-title" class="viz-title"></span>
+                <span id="viz-legend" class="legend-ramp t-axis"></span>
+              </div>
+              <div id="heatmap" class="heatmap"></div>
+              <div id="under"></div>
+            </div>
+            <div class="agent-col">
+              <div id="agent" class="agent-card" aria-live="polite"></div>
+              <div id="brief-notice" class="notice"></div>
+            </div>
+          </div>
+
+          <div class="bottom-row">
+            <article id="decision-card" class="card" aria-labelledby="decision-title"></article>
+            <div class="side-stack">
+              <section id="metrics-card" class="card" aria-labelledby="metrics-title"></section>
+              <section id="participation-card" class="card" aria-labelledby="participation-title"></section>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trace -->
+        <section id="trace" class="section" aria-labelledby="trace-title">
+          <div class="card trace-card">
+            <div class="card-head">
+              <h2 id="trace-title" class="t-title">Trace</h2>
+              <span id="trace-meta" class="t-label"></span>
+            </div>
+            <p id="trace-empty" class="trace trace-empty"></p>
+            <ol id="trace-list" class="trace" aria-label="Agent tool calls"></ol>
+          </div>
+        </section>
+
+        <!-- Decisions -->
+        <section id="decisions" class="section" aria-labelledby="decisions-title">
+          <div class="section-head">
+            <h2 id="decisions-title" class="t-section">Decisions</h2>
+            <span id="history-meta" class="meta-line"></span>
+          </div>
+          <div id="history" class="history"></div>
+        </section>
+
+        <!-- Brief -->
+        <section id="brief" class="section" aria-labelledby="brief-title">
+          <div class="section-head">
+            <h2 id="brief-title" class="t-section">Brief</h2>
+            <span class="chip chip-neutral">Indicative metrics</span>
+          </div>
+          <div id="brief-body"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
