@@ -310,10 +310,22 @@ class RlsTest:
 
         r.check("anon cannot read agent_events",
                 lambda: expect_no_rows(self.anon("GET", "agent_events", params={"round_id": f"eq.{rid}"})))
-        r.check("anon cannot read rounds directly (by design: participants use session_status)",
-                lambda: expect_no_rows(self.anon("GET", "rounds", params={"id": f"eq.{rid}"})))
-        r.check("anon cannot read sessions directly (by design)",
-                lambda: expect_no_rows(self.anon("GET", "sessions", params={"id": f"eq.{self.session_id}"})))
+        def round_status_only():
+            # anon may read the public status columns of an active session's round (the security
+            # invoker status view needs them), but no other column (processed_at is not granted)
+            ok_cols = self.anon("GET", "rounds", params={"select": "id,number,status", "id": f"eq.{rid}"})
+            hidden = self.anon("GET", "rounds", params={"select": "processed_at", "id": f"eq.{rid}"})
+            ok = ok_cols.status_code == 200 and len(rows_of(ok_cols)) == 1 and hidden.status_code >= 400
+            return ok, f"status columns HTTP {ok_cols.status_code} ({len(rows_of(ok_cols))} row); " \
+                       f"processed_at HTTP {hidden.status_code} {short(hidden) if hidden.status_code >= 400 else 'LEAK'}"
+        r.check("anon can read only the status columns of rounds (not processed_at)", round_status_only)
+
+        def rounds_read_only():
+            before = [x["status"] for x in self.backend.list_rounds(self.session_id)]
+            resp = self.anon("PATCH", "rounds", params={"id": f"eq.{rid}"}, json={"status": "closed"})
+            after = [x["status"] for x in self.backend.list_rounds(self.session_id)]
+            return before == after, f"HTTP {resp.status_code}; statuses {before} -> {after}"
+        r.check("anon cannot change rounds (status is read-only)", rounds_read_only)
         r.check("anon cannot read facilitators",
                 lambda: expect_no_rows(self.anon("GET", "facilitators", params={"select": "*"})))
 
@@ -650,10 +662,12 @@ class RlsTest:
                 lambda: expect_no_rows(user("GET", "votes", params={"round_id": f"eq.{rid}"})))
         r.check("signed-in non-facilitator cannot read agent_events",
                 lambda: expect_no_rows(user("GET", "agent_events", params={"round_id": f"eq.{rid}"})))
-        r.check("signed-in non-facilitator cannot read rounds or sessions (no extra access)",
-                lambda: (lambda a, b: (a[0] and b[0], f"rounds: {a[1]}; sessions: {b[1]}"))(
-                    expect_no_rows(user("GET", "rounds", params={"id": f"eq.{rid}"})),
-                    expect_no_rows(user("GET", "sessions", params={"id": f"eq.{self.session_id}"}))))
+        def cannot_close_directly():
+            before = [x["status"] for x in self.backend.list_rounds(self.session_id)]
+            resp = user("PATCH", "rounds", params={"id": f"eq.{rid}"}, json={"status": "closed"})
+            after = [x["status"] for x in self.backend.list_rounds(self.session_id)]
+            return before == after, f"HTTP {resp.status_code}; statuses {before} -> {after}"
+        r.check("signed-in non-facilitator cannot change rounds directly (no extra access)", cannot_close_directly)
 
         def not_fac():
             resp = user("POST", "rpc/is_facilitator", json={})

@@ -534,24 +534,15 @@ comment on function public.close_round(uuid) is 'Plurarch: facilitator closes th
 -- Participant devices poll ONLY this view (every few seconds, with jitter), and fetch a
 -- full decision only when latest_decision_id changes.
 --
--- Security choice: a SECURITY DEFINER view (security_invoker = false), owned by postgres.
---   * The view runs with its owner's rights, so it can read sessions / rounds /
---     decisions even though anon has no privilege on sessions and rounds.
---   * It exposes only these ten non-sensitive columns. It never touches votes,
---     agent_events or facilitators, so anon can read the status without reading any
---     private data. anon still cannot query the base tables directly (no grants, RLS).
---   * security_barrier = true stops user-supplied filters from being pushed below the
---     view's own WHERE clause (defence in depth).
---   * Why not security_invoker = true (the Supabase default recommendation)? Then anon
---     would need SELECT on sessions and rounds, which is exactly what we want to avoid.
---     A SECURITY DEFINER function wrapped by an invoker view is equivalent but adds a
---     second exposed object (an RPC) for the same result.
---   * The dashboard's Security Advisor will flag "Security Definer View: session_status".
---     That warning is expected and intentional for this view.
--- If you add a column, keep it non-sensitive (never counts per participant, never votes).
+-- Security choice: a SECURITY INVOKER view (Supabase's recommendation; no Security Advisor
+-- warning). It runs with the reader's own rights, so anon gets column-level SELECT on the
+-- non-sensitive status columns of sessions and rounds, limited by RLS to ACTIVE sessions
+-- (section 7). It never touches votes, agent_events or facilitators.
+-- If you add a column, keep it non-sensitive (never counts per participant, never votes),
+-- and grant that column to anon in section 7.
 drop view if exists public.session_status;
 create view public.session_status
-  with (security_invoker = false, security_barrier = true)
+  with (security_invoker = true)
 as
 select
   s.id           as session_id,
@@ -580,8 +571,7 @@ left join lateral (
    limit 1
 ) ld on true
 where s.status = 'active'
-  -- temporary sessions of tests/test_rls.py and health-check are never shown to devices
-  and s.use_case not in ('rls_test', 'health_check')
+  and s.use_case <> 'health_check'   -- health-check's temporary session is never shown to devices
 order by s.created_at desc;
 
 comment on view public.session_status is
@@ -604,6 +594,10 @@ grant select on table public.session_status to anon, authenticated;
 grant select on table public.decisions      to anon, authenticated;
 grant select on table public.questions      to anon, authenticated;   -- question definitions are public anyway
 grant insert on table public.votes          to anon, authenticated;
+-- The status columns read by the (security invoker) session_status view. RLS limits them to
+-- active sessions. No processed_at, no votes.
+grant select (id, title, use_case, status, created_at) on table public.sessions to anon;
+grant select (id, session_id, number, status, opened_at, closed_at) on table public.rounds to anon;
 -- Browsers use a plain insert (the trigger skips repeated votes), so anon needs NO select
 -- privilege on votes at all. Never use upsert/ON CONFLICT or .select() from the browser.
 
@@ -646,9 +640,9 @@ alter table public.facilitators enable row level security;
 --
 --   table         anon / any browser               facilitator (is_facilitator())
 --   ------------  -------------------------------  ------------------------------
---   sessions      -                                SELECT
+--   sessions      SELECT status columns, active     SELECT
 --   questions     SELECT                           SELECT
---   rounds        - (use session_status)           SELECT (+ open/close via RPC)
+--   rounds        SELECT status columns, active     SELECT (+ open/close via RPC)
 --   votes         INSERT while round open          SELECT (+ INSERT like anyone)
 --   decisions     SELECT                           SELECT
 --   agent_events  -                                SELECT
@@ -669,11 +663,23 @@ create policy questions_select_public on public.questions
   for select to anon, authenticated
   using (true);
 
+-- sessions and rounds: everyone may read the status of ACTIVE sessions (the public status
+-- view needs it; anon only has the status columns granted)
+drop policy if exists sessions_select_active on public.sessions;
+create policy sessions_select_active on public.sessions
+  for select to anon, authenticated
+  using (status = 'active');
+
 -- rounds
 drop policy if exists rounds_select_facilitator on public.rounds;
 create policy rounds_select_facilitator on public.rounds
   for select to authenticated
   using ((select public.is_facilitator()));
+
+drop policy if exists rounds_select_active on public.rounds;
+create policy rounds_select_active on public.rounds
+  for select to anon, authenticated
+  using (exists (select 1 from public.sessions s where s.id = rounds.session_id and s.status = 'active'));
 
 -- votes: insert only while the round is open (the trigger enforces the same rule with a
 -- clear 'round_closed' error, plus value validation).
