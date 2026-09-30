@@ -91,6 +91,7 @@ create table if not exists public.rounds (
   opened_at     timestamptz not null default now(),
   closed_at     timestamptz,
   processed_at  timestamptz,           -- set by the orchestrator once the decision is written
+  participants  integer     not null default 0,  -- live count written by the orchestrator (aggregate only)
   constraint rounds_number_positive    check (number >= 1),
   constraint rounds_status_check       check (status in ('open', 'closed')),
   constraint rounds_session_number_key unique (session_id, number)
@@ -553,11 +554,12 @@ select
   cr.status      as round_status,
   cr.opened_at   as round_opened_at,
   cr.closed_at   as round_closed_at,
+  cr.participants as round_participants,
   ld.id          as latest_decision_id,
   greatest(s.created_at, cr.opened_at, cr.closed_at, ld.created_at) as updated_at
 from public.sessions s
 left join lateral (
-  select r.id, r.number, r.status, r.opened_at, r.closed_at
+  select r.id, r.number, r.status, r.opened_at, r.closed_at, r.participants
     from public.rounds r
    where r.session_id = s.id
    order by r.number desc
@@ -597,7 +599,7 @@ grant insert on table public.votes          to anon, authenticated;
 -- The status columns read by the (security invoker) session_status view. RLS limits them to
 -- active sessions. No processed_at, no votes.
 grant select (id, title, use_case, status, created_at) on table public.sessions to anon;
-grant select (id, session_id, number, status, opened_at, closed_at) on table public.rounds to anon;
+grant select (id, session_id, number, status, opened_at, closed_at, participants) on table public.rounds to anon;
 -- Browsers use a plain insert (the trigger skips repeated votes), so anon needs NO select
 -- privilege on votes at all. Never use upsert/ON CONFLICT or .select() from the browser.
 

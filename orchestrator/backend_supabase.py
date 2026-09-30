@@ -383,6 +383,10 @@ class SupabaseBackend(Backend):
         self._send("PATCH", "/sessions", params={"id": f"eq.{session_id}"},
                    body={"status": "ended"}, prefer="return=minimal")
 
+    def update_round_participants(self, round_id: str, participants: int) -> None:
+        self._send("PATCH", "/rounds", params={"id": f"eq.{round_id}"},
+                   body={"participants": int(participants)}, prefer="return=minimal")
+
     def delete_session(self, session_id: str) -> None:
         """Delete a session and (cascade) its rounds, votes, decisions and events. Test sessions only."""
         self._send("DELETE", "/sessions", params={"id": f"eq.{session_id}"}, prefer="return=minimal")

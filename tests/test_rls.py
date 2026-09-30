@@ -336,7 +336,7 @@ class RlsTest:
                 return False, f"HTTP {resp.status_code}, {len(rows)} row(s): {resp.text[:200]}"
             row = rows[0]
             expected_cols = {"session_id", "session_title", "use_case", "round_id", "round_number",
-                             "round_status", "round_opened_at", "round_closed_at",
+                             "round_status", "round_opened_at", "round_closed_at", "round_participants",
                              "latest_decision_id", "updated_at"}
             ok = (row["round_id"] == rid and row["round_status"] == "open"
                   and row["round_number"] == 1 and set(row) == expected_cols)

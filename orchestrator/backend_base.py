@@ -65,6 +65,10 @@ class Backend:
     def mark_round_processed(self, round_id: str) -> None:
         raise NotImplementedError
 
+    def update_round_participants(self, round_id: str, participants: int) -> None:
+        """Live aggregate count for phones and the stage (session_status.round_participants)."""
+        raise NotImplementedError
+
     # --- votes ------------------------------------------------------------
     def get_votes(self, round_id: str) -> list[dict]:
         raise NotImplementedError

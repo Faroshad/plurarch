@@ -1,0 +1,195 @@
+/* ==========================================================================
+   Plurarch stage view (stage.html): one idea per screen for a projector.
+   Tokens come from styles.css. Sizes follow the viewport height so the stage fills any
+   projector; floors keep every text at 24px or more (the main number/word at 160px or more
+   at 1920x1080).
+   ========================================================================== */
+
+:root {
+  --x-hero: max(170px, 25vh);   /* count, verdict word: 270px at 1080 */
+  --x-huge: max(116px, 15vh);   /* reviewing title, countdown: 162px */
+  --x-big: max(64px, 8vh);      /* change line, metric values: 86px */
+  --x-mid: max(40px, 5vh);      /* row values, checkpoints: 54px */
+  --x-body: max(30px, 3.6vh);   /* reason, row labels: 39px */
+  --x-small: max(24px, 2.6vh);  /* captions, hints: 28px */
+  --pad-x: max(48px, 4.4vw);
+  --pad-y: max(36px, 5.6vh);
+  --dec-top: 37vh;              /* where the decision body (and the 3D panel) starts */
+}
+
+html, body.stage-body { height: 100%; }
+body.stage-body {
+  margin: 0; overflow: hidden; background: var(--bg); color: var(--text);
+  font-size: var(--x-body); line-height: 1.2;
+}
+body.stage-body.is-idle, body.stage-body.is-idle * { cursor: none !important; }
+
+.stage { position: fixed; inset: 0; overflow: hidden; }
+
+/* ---------- Screens and transitions ---------- */
+.screen {
+  position: absolute; inset: 0; padding: var(--pad-y) var(--pad-x);
+  display: flex; flex-direction: column; min-height: 0;
+  animation: stageIn 360ms var(--ease) both;
+}
+.screen.is-leaving { animation: stageOut 220ms var(--ease) both; pointer-events: none; }
+.screen.tone-agent { background: var(--gradient-agent); }
+@keyframes stageIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes stageOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+.screen-boot { align-items: center; justify-content: center; }
+.boot-text { font-size: var(--x-body); color: var(--text-secondary); }
+
+.eyebrow { font-size: var(--x-small); font-weight: 500; color: var(--text-secondary); }
+.eyebrow b { color: var(--text); font-weight: 700; }
+
+/* ---------- 1. Join ---------- */
+.join { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5vw; }
+.join-text { min-width: 0; }
+.join-title {
+  font-size: min(var(--x-huge), 8.4vw); font-weight: 800; letter-spacing: -0.035em; line-height: 0.98;
+  text-wrap: balance;
+}
+.join-url { font-size: min(var(--x-mid), 2.9vw); font-weight: 800; letter-spacing: -0.01em; margin-top: 6vh; overflow-wrap: anywhere; }
+.join-note { font-size: var(--x-small); color: var(--text-secondary); margin-top: 1.6vh; }
+.qr {
+  width: min(78vh, 44vw); height: min(78vh, 44vw); flex: none;
+  background: #FFFFFF; border: 1px solid var(--border); border-radius: 32px; padding: 2.2vh;
+  display: grid; place-items: center;
+}
+.qr svg { width: 100%; height: 100%; display: block; }
+.qr-fallback { font-size: var(--x-mid); font-weight: 800; text-align: center; overflow-wrap: anywhere; padding: 2vh; }
+.qr-fallback span { display: block; font-size: var(--x-small); font-weight: 500; color: var(--text-secondary); margin-bottom: 2vh; }
+.corner-verdict {
+  position: absolute; left: var(--pad-x); bottom: var(--pad-y);
+  display: flex; align-items: center; gap: 14px; font-size: var(--x-small); color: var(--text-secondary);
+}
+.corner-verdict .verdict { height: auto; padding: 8px 18px; font-size: var(--x-small); }
+
+/* ---------- 2. Voting ---------- */
+.vote-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 4vw; }
+.count { font-size: var(--x-hero); font-weight: 800; letter-spacing: -0.045em; line-height: 0.84; margin-top: 1.4vh; }
+.count-label { font-size: var(--x-big); font-weight: 700; letter-spacing: -0.02em; margin-top: 1.6vh; }
+.clock { text-align: right; }
+.clock .t { font-size: var(--x-huge); font-weight: 800; letter-spacing: -0.03em; line-height: 0.9; }
+.clock .l { font-size: var(--x-body); color: var(--text-secondary); font-weight: 500; margin-top: 1vh; }
+.clock.is-over .t, .clock.is-over .l { color: var(--verdict-modified-fg); }
+.rows { margin-top: auto; display: flex; flex-direction: column; gap: 1.4vh; }
+.qrow {
+  display: grid; grid-template-columns: minmax(0, 27%) minmax(0, 24%) minmax(0, 1fr) 5.2ch;
+  align-items: center; gap: 2.4vw; padding: 1.2vh 0; border-top: 1px solid var(--border);
+}
+.qrow .lbl { font-size: var(--x-body); font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qrow .val { font-size: var(--x-mid); font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qrow .val small { font-size: var(--x-small); font-weight: 500; color: var(--text-secondary); margin-left: 0.5em; letter-spacing: 0; }
+.qrow .val.flash { animation: valFlash 420ms var(--ease); }
+@keyframes valFlash { from { opacity: 0.25; } to { opacity: 1; } }
+.qrow .bar { height: max(14px, 1.5vh); border-radius: var(--r-pill); background: var(--neutral-1); overflow: hidden; }
+.qrow .bar > span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width 420ms var(--ease); }
+.qrow .share { font-size: var(--x-mid); font-weight: 700; text-align: right; }
+.vote-bottom { display: flex; justify-content: space-between; align-items: center; gap: 3vw; margin-top: 3.4vh; }
+.vote-bottom .eyebrow { max-width: 60%; }
+.stage-btn.btn-ring {
+  height: max(84px, 9.2vh); padding: 0 3.6vw; border-width: 3px; font-size: var(--x-mid); gap: 18px;
+}
+.stage-btn kbd { font: inherit; font-size: var(--x-small); font-weight: 700; color: var(--text-secondary); background: var(--surface); border-radius: 10px; padding: 4px 12px; }
+
+/* ---------- 3. Reviewing ---------- */
+.review-title { font-size: var(--x-huge); font-weight: 800; letter-spacing: -0.035em; line-height: 0.98; margin-top: 2vh; text-wrap: balance; }
+.checks { list-style: none; margin: auto 0 0; padding: 0; display: flex; flex-direction: column; gap: 2.4vh; }
+.check { display: flex; align-items: center; gap: 2vw; font-size: var(--x-mid); font-weight: 700; color: var(--text-secondary); transition: color 300ms var(--ease); }
+.check .dot {
+  width: max(58px, 6.6vh); height: max(58px, 6.6vh); flex: none; border-radius: 50%;
+  border: 4px solid rgba(26, 26, 26, 0.18); background: rgba(255, 255, 255, 0.55);
+  display: grid; place-items: center; color: var(--on-ink);
+  transition: background-color 300ms var(--ease), border-color 300ms var(--ease);
+}
+.check .dot svg { width: 58%; height: 58%; opacity: 0; transform: scale(0.6); transition: opacity 260ms var(--ease), transform 260ms var(--ease); }
+.check.is-done { color: var(--text); }
+.check.is-done .dot { background: var(--ink); border-color: var(--ink); }
+.check.is-done .dot svg { opacity: 1; transform: none; }
+.check.is-active { color: var(--text); }
+.check.is-active .dot { border-color: var(--accent); background: #FFFFFF; animation: pulse 1.6s ease-out infinite; }
+.review-sub {
+  margin-top: 3.6vh; font-size: var(--x-small); color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.3em;
+}
+
+/* ---------- 4. Decision ---------- */
+.verdict-word { font-size: var(--x-hero); font-weight: 800; letter-spacing: -0.035em; line-height: 0.86; margin-top: 1vh; white-space: nowrap; }
+.verdict-word.v-accepted { color: var(--verdict-accepted-fg); }
+.verdict-word.v-modified { color: var(--verdict-modified-fg); }
+.verdict-word.v-rejected { color: var(--verdict-rejected-fg); }
+.verdict-word.v-none { color: var(--text-secondary); }
+.dec-body { position: absolute; left: var(--pad-x); right: var(--pad-x); top: var(--dec-top); bottom: var(--pad-y); display: grid; grid-template-columns: minmax(0, 1fr); gap: 4vw; }
+.dec-body.with-3d { grid-template-columns: minmax(0, 1fr) 44vw; }
+.dec-text { min-width: 0; display: flex; flex-direction: column; }
+.change { font-size: var(--x-big); font-weight: 800; letter-spacing: -0.025em; line-height: 1.04; text-wrap: balance; }
+.change-part { display: block; }
+.reason { font-size: var(--x-body); line-height: 1.32; margin-top: 3vh; max-width: 36ch; }
+.dec-body:not(.with-3d) .reason { max-width: 52ch; }
+.metrics { display: flex; gap: 3.4vw; margin-top: auto; padding-top: 3vh; flex-wrap: wrap; row-gap: 2.4vh; }
+.metric .lbl { font-size: var(--x-small); color: var(--text-secondary); font-weight: 500; }
+.metric .val { font-size: max(52px, 6.4vh); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; }
+.metric .val .arrow { color: var(--text-secondary); font-weight: 500; }
+.metric .sub { font-size: var(--x-small); color: var(--text-secondary); margin-top: 0.5vh; }
+.metric .sub .word-pass, .metric .sub .word-marginal, .metric .sub .word-fail { font-size: inherit; }
+
+/* The 3D panel sits in the decision body's right column; kept outside the screens so the WebGL
+   context survives screen changes. */
+.stage-3d {
+  position: fixed; right: var(--pad-x); top: var(--dec-top); bottom: var(--pad-y); width: 44vw; z-index: 3;
+  border-radius: var(--r-card); overflow: hidden; background: #EEF1F4;
+  opacity: 0; visibility: hidden; transition: opacity 360ms var(--ease), visibility 0s 360ms;
+}
+.stage-3d.is-on { opacity: 1; visibility: visible; transition: opacity 360ms var(--ease), visibility 0s; }
+.stage-3d > .v3d-host { position: absolute; inset: 0; }
+.stage-3d .v3d-hint, .stage-3d .v3d-stops, .stage-3d .v3d-pins { display: none !important; }
+
+/* ---------- Chrome: connection dot, demo chip, auto-hiding hints, toast ---------- */
+.stage-conn {
+  position: fixed; top: 2.4vh; right: 1.8vw; z-index: 20;
+  display: flex; align-items: center; gap: 12px; font-size: var(--x-small); font-weight: 500; color: var(--text-secondary);
+}
+.stage-conn .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--neutral-4); }
+.stage-conn .txt { display: none; }
+.stage-conn[data-state="connected"] .dot { background: var(--accent); animation: pulse 2.2s ease-out infinite; }
+.stage-conn[data-state="reconnecting"] .dot { background: var(--neutral-5); animation: blink 1s ease-in-out infinite; }
+.stage-conn[data-state="reconnecting"] .txt, .stage-conn[data-state="offline"] .txt { display: inline; }
+.stage-conn[data-state="offline"] .dot { background: var(--verdict-rejected-fg); }
+.stage-conn[data-state="offline"] { color: var(--verdict-rejected-fg); }
+@keyframes blink { 50% { opacity: 0.3; } }
+.stage-demo {
+  position: fixed; top: 1.2vh; left: 50%; transform: translateX(-50%); z-index: 20;
+  font-size: var(--x-small); font-weight: 700; color: var(--text-secondary);
+  background: var(--surface); border-radius: var(--r-pill); padding: 6px 16px;
+}
+
+.stage-hints {
+  position: fixed; left: 50%; bottom: 2vh; transform: translate(-50%, 12px); z-index: 30;
+  display: flex; align-items: center; gap: 28px; white-space: nowrap;
+  font-size: var(--x-small); color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.96); border-radius: var(--r-pill); padding: 10px 14px 10px 26px;
+  box-shadow: var(--shadow-float);
+  opacity: 0; pointer-events: none; transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+}
+.stage-hints.is-on { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.stage-hints kbd, .stage-hint-btn kbd {
+  font: inherit; font-weight: 700; color: var(--text); background: var(--surface);
+  border-radius: 8px; padding: 2px 10px; margin-right: 6px;
+}
+.stage-hint-btn {
+  font: inherit; color: inherit; background: transparent; border: 0; border-radius: var(--r-pill);
+  padding: 8px 12px; text-decoration: none; cursor: pointer;
+}
+.stage-hint-btn:hover { background: var(--surface); color: var(--text); }
+
+.stage-toast {
+  position: fixed; left: 50%; top: 4vh; transform: translateX(-50%); z-index: 40;
+  background: var(--ink); color: var(--on-ink); border-radius: var(--r-pill);
+  padding: 16px 32px; font-size: var(--x-small); font-weight: 500; box-shadow: var(--shadow-float);
+  animation: toastIn 220ms var(--ease) both; max-width: 80vw; text-align: center;
+}
+
+/* Login gate (reuses the console's login styles, enlarged for a projector) */
+.stage-login { position: fixed; inset: 0; z-index: 50; background: var(--bg); }
+.stage-login .login-card { zoom: 1.75; } /* 14px labels render at 24.5px */

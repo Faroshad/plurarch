@@ -27,6 +27,7 @@ create table if not exists rounds (
   id text primary key, session_id text not null references sessions(id) on delete cascade,
   number integer not null, status text not null check (status in ('open','closed')),
   opened_at text not null, closed_at text, processed_at text,
+  participants integer not null default 0,
   unique (session_id, number));
 create unique index if not exists one_open_round on rounds(session_id) where status = 'open';
 create table if not exists votes (
@@ -75,6 +76,9 @@ class LocalBackend(Backend):
             self._conn.execute("pragma busy_timeout=10000")
             self._conn.execute("pragma foreign_keys=on")
             self._conn.executescript(SCHEMA_SQL)
+            cols = {r[1] for r in self._conn.execute("pragma table_info(rounds)").fetchall()}
+            if "participants" not in cols:  # databases created before the live count existed
+                self._conn.execute("alter table rounds add column participants integer not null default 0")
             self._conn.commit()
 
     # --- helpers -------------------------------------------------------------
@@ -173,6 +177,9 @@ class LocalBackend(Backend):
     def mark_round_processed(self, round_id):
         self._exec("update rounds set processed_at=? where id=? and processed_at is null", (_now(), round_id))
 
+    def update_round_participants(self, round_id, participants):
+        self._exec("update rounds set participants=? where id=?", (int(participants), round_id))
+
     # --- votes ----------------------------------------------------------------
     def get_votes(self, round_id):
         return self._rows("votes", "select * from votes where round_id=? order by id", (round_id,))
@@ -248,6 +255,7 @@ class LocalBackend(Backend):
             "round_id": r["id"] if r else None, "round_number": r["number"] if r else None,
             "round_status": r["status"] if r else None,
             "round_opened_at": r["opened_at"] if r else None, "round_closed_at": r["closed_at"] if r else None,
+            "round_participants": r["participants"] if r else 0,
             "latest_decision_id": d["id"] if d else None, "updated_at": max(stamps),
         }
 

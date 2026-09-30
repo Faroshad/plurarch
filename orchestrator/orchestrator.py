@@ -232,6 +232,10 @@ def process_round(ctx: Ctx, session: dict, rnd: dict) -> dict:
     proposal = tally.build_proposal(votes, before, previous, ctx.schema, ctx.brief)
     proposal = {"session_id": session["id"], "round_id": rnd["id"], "round_number": rnd["number"], **proposal}
     part = proposal["participation"]
+    try:  # the final count, so the closed round shows how many took part
+        be.update_round_participants(rnd["id"], part["participants"])
+    except Exception:
+        pass
     fwd = EventForwarder(ctx, rnd["id"])
     try:
         be.delete_agent_events(rnd["id"])  # a crashed earlier attempt may have left events
@@ -346,6 +350,7 @@ def cmd_run(ctx: Ctx, args) -> None:
     last_seen = {}
     last_count = (None, -1)
     last_tick = 0.0
+    count_retry_at = 0.0
     backoff = 1.0
     while True:
         try:
@@ -358,13 +363,19 @@ def cmd_run(ctx: Ctx, args) -> None:
                         say(f"Round {r['number']} is open · voting", "accent")
                     last_seen[r["id"]] = r["status"]
             open_r = next((r for r in rounds if r["status"] == "open"), None)
-            if open_r and time.monotonic() - last_tick > 5:
+            if open_r and time.monotonic() - last_tick > 2.5:
                 votes = ctx.backend.get_votes(open_r["id"])
+                people = len({v["participant_id"] for v in votes})
                 n = (open_r["id"], len(votes))
                 if n != last_count:
-                    say(f"  Round {open_r['number']}: {len({v['participant_id'] for v in votes})} participants, "
-                        f"{len(votes)} votes", "dim")
+                    say(f"  Round {open_r['number']}: {people} participants, {len(votes)} votes", "dim")
                     last_count = n
+                if people != (open_r.get("participants") or 0) and time.monotonic() > count_retry_at:
+                    try:  # live count for the phones and the stage view
+                        ctx.backend.update_round_participants(open_r["id"], people)
+                    except Exception as e:  # e.g. Supabase migration 003 not applied yet
+                        say(f"  (live count not updated: {e}; retrying in 60 s)", "warn")
+                        count_retry_at = time.monotonic() + 60
                 last_tick = time.monotonic()
             for r in ctx.backend.get_closed_unprocessed_rounds(session["id"]):
                 process_round(ctx, session, r)

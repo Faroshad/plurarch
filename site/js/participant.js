@@ -2,11 +2,14 @@
 // submits all answers in one call, and shows the decision. No realtime connection is ever opened here.
 //
 // Two layouts share one state and one draft:
-//   - 3D (default): the pavilion model fills the whole screen (js/viewer3d.js, three.js loaded lazily).
-//     The page never scrolls: only thin dark overlays sit on the scene (status line or decision
-//     banner at the top, view toggles and Submit at the bottom). Every question is a pin on its
-//     element; a pin opens a bottom sheet with the same controls as the stepper, and the model
-//     rebuilds live from the draft ("Your version"). Rules, privacy and "List view" live in the (i) sheet.
+//   - 3D (default, made for a 5-minute live demo): the pavilion model fills the whole screen
+//     (js/viewer3d.js, three.js loaded lazily) and the page never scrolls. On top: a small wordmark,
+//     ONE status pill (live / "37 voting · 0:42" / voted / AI reviewing / the verdict chip) and (i);
+//     at the bottom: Orbit/Tour and one guided button ("Next question · 3/4", then "Submit vote").
+//     Every question is a pin on its element; a pin opens a bottom sheet with the stepper's controls
+//     and the model rebuilds live from the draft. Moments: a "Vote now" splash when a round opens, a
+//     check pop on submit, and a full-screen decision reveal that collapses into the verdict chip.
+//     Rules, privacy, the question list and "List view" live in the (i) sheet.
 //   - List view: the original page with the one-question-per-screen stepper and the design drawing.
 //     It is also the fallback whenever WebGL2 or the CDN is unavailable.
 // URL flags for testing: ?v3d=0 forces the fallback, ?q=0|1|2 pins the 3D quality tier, ?debug=1.
@@ -16,7 +19,7 @@ import {
   el, mount, icon, loadIcons, loadAppConfig, store, sessionStore, randomId, sleep, asObject,
   verdictBadge, verdictOf, decisionRows, appliedValue, snapToStep, wordmark, reducedMotion, toast,
 } from './ui.js';
-import { fmtParamValue, fmtSliderNumber, fmtTime, fmtTimeS, joinDot, fmtNum, toNum } from './format.js';
+import { fmtParamValue, fmtSliderNumber, fmtTime, fmtClock, parseTime, joinDot, fmtNum, toNum } from './format.js';
 
 const URLQ = new URLSearchParams(window.location.search);
 const VIEW_KEY = 'plurarch:view';
@@ -31,7 +34,9 @@ const S = {
   draft: null, // { roundId, roundNumber, step, answers }
   closedNotice: null, // { roundId, number } when a draft was dropped because the round closed
   pollProblem: false,
-  lastPollAt: 0, // last successful status check (shown as "checked 12:04:31")
+  lastPollAt: 0, // last successful status check
+  polledOnce: false,
+  revealId: null, // decision id whose reveal should play (new since the page opened)
   submitProblem: false,
   submitting: false,
   submitError: '',
@@ -46,7 +51,6 @@ const S = {
     mod: null, // the pavilion model module (buildPavilion, QUESTION_TAGS)
     pref: sessionStore.get(VIEW_KEY) === 'list' ? 'list' : '3d',
     mode: 'orbit', // orbit | tour
-    version: 'yours', // yours | current (voting and voted screens)
     sheetKey: null, // question open in the sheet
     highlight: null, // decision screen: highlighted question
     modelKey: '',
@@ -65,6 +69,7 @@ const dom = {
   roundPill: document.getElementById('round-pill'),
   header: document.querySelector('.p-header'),
   infoBtn: document.getElementById('info-btn'),
+  statusPill: document.getElementById('status-pill'),
   netPill: document.getElementById('net-pill'),
   announce: document.getElementById('announce'),
   brand: document.getElementById('brand'),
@@ -127,7 +132,6 @@ function ensureDraft(round) {
   } catch (_) { d = null; }
   if (!d) {
     d = { roundId: round.id, roundNumber: round.number, step: 0, answers: {} };
-    S.v3d.version = 'yours';
   }
   d.answers = asObject(d.answers);
   d.step = Math.max(0, Math.min(S.cfg.params.length - 1, Number(d.step) || 0));
@@ -186,7 +190,11 @@ async function poll() {
     } else if (did !== S.decisionId) {
       try {
         const d = await S.backend.getDecision(did);
-        if (d && typeof d === 'object') { S.decision = d; S.decisionId = did; }
+        if (d && typeof d === 'object') {
+          S.decision = d;
+          S.decisionId = did;
+          if (S.polledOnce) S.revealId = did; // arrived while the page was open: play the reveal
+        }
       } catch (e) {
         if (isRetryable(e)) ok = false; // try again on the next poll
       }
@@ -197,7 +205,7 @@ async function poll() {
     polling = false;
   }
   S.pollProblem = !ok;
-  if (ok) S.lastPollAt = Date.now();
+  if (ok) { S.lastPollAt = Date.now(); S.polledOnce = true; }
   render();
   if (!document.hidden) schedulePoll(ok ? nextDelay() : Math.min(nextDelay() * 1.5, 12000));
 }
@@ -608,9 +616,11 @@ function resolveView() {
 }
 
 /* ------------------------------------------------------------------ 3D layout */
-// One persistent stage (one WebGL context for the whole visit): a fixed, full-screen scene. Views
-// re-parent it together with their overlays; moving the element keeps the canvas and its context.
-const stage = { root: null, host: null, poster: null, modeSeg: null, verSeg: null };
+// One persistent stage (one WebGL context for the whole visit): a fixed, full-screen scene. On top:
+// the header (small wordmark, ONE status pill, (i)) and one bottom row (Orbit/Tour + one guided
+// button while voting). Everything else lives in sheets. Views re-parent the stage; moving the
+// element keeps the canvas and its WebGL context.
+const stage = { root: null, host: null, poster: null, modeSeg: null };
 const STAGE_VIEWS = ['waiting', 'questions', 'voted', 'reviewing', 'decision'];
 
 function use3d() {
@@ -649,10 +659,9 @@ function buildStage() {
   stage.host = el('div', { class: 'v3d-host' });
   stage.poster = el('div', { class: 'p-stage-poster', 'aria-hidden': 'true' },
     el('img', { src: DESIGN_IMG, alt: '', width: 1064, height: 524, decoding: 'async' }),
-    el('span', { class: 'p-stage-loading' }, icon('loader-circle', 16, 'spin'), 'Loading the 3D model…'));
+    el('span', { class: 'p-stage-loading' }, icon('loader-circle', 16, 'spin'), 'Loading 3D…'));
   stage.modeSeg = segControl('View', [['orbit', 'Orbit', 'Orbit: turn the model'], ['tour', 'Tour', 'Tour: walk inside']], () => S.v3d.mode, onModeSeg);
   stage.modeSeg.setDisabled(S.v3d.status !== 'ready');
-  stage.verSeg = segControl('Which design', [['yours', 'Your version'], ['current', 'Current', 'Current design']], () => S.v3d.version, onVersionSeg);
   stage.root = el('section', { class: 'p-stage', 'aria-label': 'The pavilion in 3D' }, stage.poster, stage.host);
   return stage.root;
 }
@@ -670,6 +679,7 @@ function ensureViewer() {
     v.viewer = vm.createViewer(stage.host, {
       questionTags: pm.QUESTION_TAGS,
       quality: q != null && /^[0-2]$/.test(q) ? Number(q) : 'auto',
+      tourHint: false,
       canvasLabel: '3D model of the pavilion. Drag to turn it, pinch to zoom, drag with two fingers to move. The pins mark the questions.',
       onPinTap,
       onReady: onViewerReady,
@@ -720,14 +730,6 @@ function onModeSeg(m) {
   viewer.setMode(m);
 }
 
-function onVersionSeg(ver) {
-  if (S.v3d.version === ver) return;
-  S.v3d.version = ver;
-  stage.verSeg.sync();
-  syncStage();
-  announce(ver === 'yours' ? 'Showing your version' : 'Showing the current design');
-}
-
 function paramsFrom(source) {
   const out = {};
   for (const p of S.cfg.params) {
@@ -739,10 +741,11 @@ function paramsFrom(source) {
   return out;
 }
 
+// Voting: the participant's draft. Voted: their vote. Otherwise: the applied design.
 function stageParams(view) {
   const round = currentRound();
-  if (view === 'questions' && S.v3d.version === 'yours' && S.draft) return paramsFrom(S.draft.answers);
-  if (view === 'voted' && S.v3d.version === 'yours' && round) return paramsFrom(votedAnswers(round.id));
+  if (view === 'questions' && S.draft) return paramsFrom(S.draft.answers);
+  if (view === 'voted' && round) return paramsFrom(votedAnswers(round.id));
   return paramsFrom(null);
 }
 
@@ -750,15 +753,13 @@ function votePins() {
   const d = S.draft;
   if (!d) return [];
   const n = S.cfg.params.length;
-  const current = S.v3d.version === 'current'; // the model shows the current design: pins say so too
   return S.cfg.params.map((p, i) => {
     const set = isAnswered(p);
-    const mine = set ? fmtParamValue(p, d.answers[p.key]) : 'not set yet';
-    const value = current ? `Now ${fmtParamValue(p, appliedValue(S.decision, p))}` : set ? mine : 'Pick one';
+    const value = set ? fmtParamValue(p, d.answers[p.key]) : 'Pick one';
     return {
-      question: p.key, num: i + 1, value,
+      question: p.key, value, badge: set ? 'check' : 'ring',
       state: S.v3d.sheetKey === p.key ? 'active' : set ? 'answered' : 'todo',
-      aria: `Question ${i + 1} of ${n}, ${p.label}: ${current ? value.replace('Now', 'now') + ', your answer ' + mine : mine}. Opens the question.`,
+      aria: `Question ${i + 1} of ${n}, ${p.label}: ${set ? value : 'not set yet'}. Opens the question.`,
     };
   });
 }
@@ -766,18 +767,18 @@ function votePins() {
 function decisionPins() {
   const v = verdictOf(S.decision);
   const tag = v && v !== 'REJECTED' ? 'Changed' : 'Not applied';
-  return decisionRows(S.decision, S.cfg.params).map((r, i) => ({
-    question: r.param.key, num: i + 1, value: r.appliedText,
-    state: S.v3d.sheetKey === r.param.key ? 'active' : r.changed ? 'changed' : 'answered', tag,
-    aria: `${r.param.label}: ${r.appliedText} applied${r.voted !== undefined ? `, the room voted ${r.votedText}` : ''}${r.changed ? ` (${tag.toLowerCase()})` : ''}. Shows the details.`,
+  return decisionRows(S.decision, S.cfg.params).map((r) => ({
+    question: r.param.key, value: r.appliedText, badge: 'none', tag,
+    state: S.v3d.sheetKey === r.param.key ? 'active' : r.changed ? 'changed' : 'info',
+    aria: `${r.param.label}: ${r.appliedText}${r.changed ? ` (${tag.toLowerCase()}, the room voted ${r.votedText})` : ''}. Shows the details.`,
   }));
 }
 
 // Read-only pins (waiting, voted, reviewing): the values the model shows.
 function valuePins(view) {
   const vals = stageParams(view);
-  return S.cfg.params.map((p, i) => ({
-    question: p.key, num: i + 1, value: fmtParamValue(p, vals[p.key]),
+  return S.cfg.params.map((p) => ({
+    question: p.key, value: fmtParamValue(p, vals[p.key]), badge: 'none',
     state: S.v3d.sheetKey === p.key ? 'active' : 'info',
     aria: `${p.label}: ${fmtParamValue(p, vals[p.key])}. Shows the question.`,
   }));
@@ -845,91 +846,234 @@ function onPinTap(key) {
   else openPinCard(key, btn);
 }
 
-/* ---- overlays */
-// Top: status line (or decision banner + live line). Bottom: toggles, then Questions + Submit.
-function liveLine(prefix) {
-  const problem = S.pollProblem || S.submitProblem;
-  return {
-    icon: problem ? 'spin' : 'live',
-    text: prefix,
-    sub: problem ? 'reconnecting…' : S.lastPollAt ? `live · checked ${fmtTimeS(S.lastPollAt)}` : 'live',
-  };
+/* ---- the status pill (the one line of text on screen) */
+function participantsCount() {
+  const v = S.status ? S.status.round_participants : null;
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
 }
 
-// The top pill already names the round ("Round 2 · open"), so the line never repeats it.
-function lineParts(view) {
+function countdownText() {
+  const opened = parseTime(S.status && S.status.round_opened_at);
+  const dur = Number(S.cfg.profile.round_duration_s);
+  if (!Number.isFinite(opened) || !(dur > 0)) return '';
+  const left = Math.ceil((opened + dur * 1000 - Date.now()) / 1000);
+  return left > 0 ? fmtClock(Math.min(left, dur)) : 'closing…';
+}
+
+const shortLabel = (p) => String(p.label).split(' ')[0];
+const bareValue = (p, v) => (p.type === 'slider' ? fmtSliderNumber(p, v) : fmtParamValue(p, v));
+
+function firstChange(d) {
+  return decisionRows(d, S.cfg.params).find((r) => r.changed) || null;
+}
+
+// Short change for the pill chip: "canopy 2.5 m", "as voted", "kept".
+function decisionShort(d) {
+  const v = verdictOf(d);
+  if (!v) return 'no change';
+  if (v === 'REJECTED') return 'kept';
+  const ch = firstChange(d);
+  return v === 'MODIFIED' && ch ? `${shortLabel(ch.param).toLowerCase()} ${ch.appliedText}` : 'as voted';
+}
+
+function statusParts(view, problem) {
+  if (problem) return { icon: 'spin', text: 'Reconnecting…' };
+  const n = participantsCount();
   switch (view) {
     case 'questions': {
-      const n = S.cfg.params.filter(isAnswered).length;
-      return { icon: 'live', text: `Voting open · ${n} of ${S.cfg.params.length} set` };
+      const cd = countdownText();
+      return { icon: 'live', text: joinDot([n != null ? `${n} voting` : 'Voting', cd]) };
     }
-    case 'voted': return { icon: 'check', text: 'Vote recorded', sub: 'the reviewer judges it when voting closes' };
-    case 'reviewing': return { icon: 'spin', text: 'Voting closed', sub: 'the reviewer agent is reviewing…' };
-    case 'decision': return liveLine('Waiting for the next round');
-    default: return liveLine(S.status ? 'Waiting for the next round' : 'Waiting for the session to start');
+    case 'voted': return { icon: 'check', text: n != null ? `Voted · ${n} voting` : 'Voted' };
+    case 'reviewing': return { icon: 'spin', text: 'AI reviewing…' };
+    default: return { icon: 'live', text: 'Live · next round soon' };
   }
 }
 
-function renderLine(node, parts) {
+function renderStatusPill() {
+  const pill = dom.statusPill;
+  if (!pill) return;
+  const view = S.curView;
+  const problem = S.pollProblem || S.submitProblem;
+  if (!problem && view === 'decision' && S.decision) {
+    const d = S.decision;
+    const v = verdictOf(d);
+    const short = decisionShort(d);
+    const key = `d|${S.decisionId}|${short}`;
+    if (pill.dataset.key === key) return;
+    pill.dataset.key = key;
+    pill.dataset.kind = 'chip';
+    mount(pill, el('button', {
+      class: 'pill-chip', type: 'button', 'aria-haspopup': 'dialog',
+      'aria-label': `Decision: ${v || 'no change'}, ${short}. Show details.`,
+      onclick: (e) => openDetailsSheet(e.currentTarget),
+    }, verdictBadge(d), el('span', { class: 'pill-text', text: short })));
+    return;
+  }
+  const parts = statusParts(view, problem);
   const key = JSON.stringify(parts);
-  if (node.dataset.key === key) return;
-  node.dataset.key = key;
+  if (pill.dataset.key === key) return;
+  pill.dataset.key = key;
+  pill.dataset.kind = 'text';
   const ic = parts.icon === 'live' ? el('span', { class: 'live-dot', 'aria-hidden': 'true' })
-    : parts.icon === 'spin' ? icon('loader-circle', 16, 'spin')
-      : parts.icon === 'check' ? icon('check', 16) : null;
-  mount(node, ic, el('span', { class: 'ov-line-text', text: parts.text }), parts.sub ? el('span', { class: 'ov-line-sub', text: parts.sub }) : null);
+    : parts.icon === 'spin' ? icon('loader-circle', 16, 'spin') : icon('check', 16);
+  mount(pill, ic, el('span', { class: 'pill-text', text: parts.text }));
 }
 
-function decisionSummary(d) {
+/* ---- moments: "Vote now", the vote check, the decision reveal */
+function showSplash(text, then) {
+  const n = el('div', { class: 'splash', 'aria-hidden': 'true' }, el('span', { class: 'splash-text', text }));
+  document.body.appendChild(n);
+  requestAnimationFrame(() => requestAnimationFrame(() => n.classList.add('in')));
+  const fast = reducedMotion();
+  setTimeout(() => {
+    n.classList.remove('in');
+    setTimeout(() => { n.remove(); if (then) then(); }, fast ? 0 : 320);
+  }, fast ? 900 : 1200);
+}
+
+function pulsePrimary() {
+  const b = document.getElementById('go-3d');
+  if (!b || reducedMotion()) return;
+  b.classList.remove('pulse-once');
+  void b.offsetWidth; // restart the animation
+  b.classList.add('pulse-once');
+}
+
+function popCheck() {
+  const n = el('div', { class: 'pop-check', 'aria-hidden': 'true' }, el('span', { class: 'pop-disc' }, icon('check', 28)));
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), reducedMotion() ? 700 : 1100);
+}
+
+function revealLine(d) {
   const v = verdictOf(d);
   if (!v) return 'No change this round';
-  if (v === 'REJECTED') return 'The design stays as it was';
-  const rows = decisionRows(d, S.cfg.params).filter((r) => r.changed);
-  if (!rows.length) return 'Applied as voted';
-  const first = rows[0];
-  const shortLabel = (p) => p.label.split(' ')[0];
-  return `${shortLabel(first.param)} ${first.votedText} → ${first.appliedText}${rows.length > 1 ? ` · +${rows.length - 1} more` : ''}`;
+  if (v === 'REJECTED') return 'Kept the design';
+  const ch = firstChange(d);
+  if (v === 'MODIFIED' && ch) return `${shortLabel(ch.param)} ${bareValue(ch.param, ch.voted)} → ${ch.appliedText}`;
+  return 'Applied as voted';
 }
 
-function decisionBanner() {
-  const d = S.decision;
-  return el('div', { class: 'ov-banner ov-glass', role: 'group', 'aria-label': 'Decision' },
-    verdictBadge(d),
-    el('span', { class: 'ov-banner-text', text: decisionSummary(d) }),
-    el('button', { class: 'ov-pill-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: (e) => openDetailsSheet(e.currentTarget) }, 'Details'));
+// The element to fly to: what the reviewer changed, else what the room changed in the design.
+function revealTarget(d) {
+  const v = verdictOf(d);
+  if (!v || v === 'REJECTED') return null;
+  const ch = firstChange(d);
+  if (ch) return ch.param.key;
+  const cur = asObject(asObject(d.proposal).current_parameters);
+  const moved = decisionRows(d, S.cfg.params).find((r) => r.applied !== undefined && cur[r.param.key] !== undefined && String(cur[r.param.key]) !== String(r.applied));
+  return moved ? moved.param.key : null;
 }
 
+let reveal = null;
+function showReveal(d) {
+  if (reveal) reveal.collapse(true);
+  const v = verdictOf(d);
+  const word = v || 'No change';
+  const line = revealLine(d);
+  const node = el('div', { class: `reveal reveal-${v ? v.toLowerCase() : 'none'}`, role: 'status' },
+    el('div', { class: 'reveal-card' },
+      el('div', { class: 'reveal-word', text: word }),
+      el('div', { class: 'reveal-line', text: line })));
+  document.body.appendChild(node);
+  announce(`Decision: ${word}. ${line}`);
+  requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add('in')));
+  const target = revealTarget(d);
+  const viewer = S.v3d.viewer;
+  if (viewer && target && S.v3d.status === 'ready' && !reducedMotion()) {
+    viewer.focus(target);
+    viewer.pulse(target, 3300);
+  }
+  let done = false;
+  const collapse = (instant) => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    reveal = null;
+    const card = node.querySelector('.reveal-card');
+    const pill = dom.statusPill;
+    if (!instant && pill && card && !reducedMotion()) {
+      // shrink into the status pill, where the verdict chip lives from now on
+      const a = card.getBoundingClientRect(); const b = pill.getBoundingClientRect();
+      const sc = Math.max(0.08, Math.min(1, b.width / a.width));
+      card.style.transform = `translate(${Math.round(b.left + b.width / 2 - (a.left + a.width / 2))}px, ${Math.round(b.top + b.height / 2 - (a.top + a.height / 2))}px) scale(${sc.toFixed(3)})`;
+    }
+    node.classList.remove('in');
+    node.classList.add('out');
+    setTimeout(() => {
+      node.remove();
+      if (pill && !instant) { pill.classList.remove('pop'); void pill.offsetWidth; pill.classList.add('pop'); }
+    }, instant || reducedMotion() ? 0 : 480);
+  };
+  node.addEventListener('click', () => collapse(false));
+  const timer = setTimeout(() => collapse(false), 3500);
+  reveal = { collapse };
+}
+
+/* ---- bottom row: Orbit/Tour + one guided button */
 function view3d(view, round) {
   if (view === 'questions') ensureDraft(round);
-  const line = el('div', { class: 'ov-line ov-glass', id: 'ov-line', role: 'status' });
-  const notice = S.closedNotice && (!round || S.closedNotice.roundId === round.id) && view !== 'questions'
-    ? el('div', { class: 'ov-line ov-glass ov-alert' }, icon('info', 16), 'This round closed before your answers were sent.') : null;
-  const err = view === 'questions' && S.submitError ? el('div', { class: 'ov-line ov-glass ov-alert', role: 'alert' }, S.submitError) : null;
-  const top = el('div', { class: 'ov ov-top', id: 'ov-top' }, view === 'decision' && S.decision ? decisionBanner() : null, line, notice, err);
-  const rows = [el('div', { class: 'ov-row' }, stage.modeSeg.node, view === 'questions' || view === 'voted' ? stage.verSeg.node : null)];
-  if (view === 'questions') {
-    rows.push(el('div', { class: 'ov-row ov-actions' },
-      el('button', { class: 'ov-btn', id: 'q-open', type: 'button', 'aria-haspopup': 'dialog', onclick: (e) => openQuestionsList(e.currentTarget) },
-        icon('list', 18), el('span', { text: 'Questions' }), el('span', { class: 'ov-count', id: 'q-count' })),
-      el('button', { class: 'ov-submit', id: 'submit-3d', type: 'button', onclick: submit3d }, 'Submit vote')));
-  }
-  const bottom = el('div', { class: 'ov ov-bottom', id: 'ov-bottom' }, rows);
-  return [buildStage(), top, bottom];
+  const row = el('div', { class: 'ov-row' }, stage.modeSeg.node,
+    view === 'questions' ? el('button', { class: 'ov-go', id: 'go-3d', type: 'button', onclick: onPrimary }) : null);
+  const bottom = el('div', { class: 'ov ov-bottom', id: 'ov-bottom' }, row);
+  return [buildStage(), bottom];
 }
 
-// Update the status line, Questions count, Submit state and pins in place (no re-mount).
+function updatePrimary() {
+  const btn = document.getElementById('go-3d');
+  if (!btn || !S.draft) return;
+  const params = S.cfg.params;
+  const n = params.filter(isAnswered).length;
+  const all = n === params.length;
+  const key = JSON.stringify([n, all, S.submitting]);
+  if (btn.dataset.key === key) return;
+  btn.dataset.key = key;
+  btn.textContent = '';
+  btn.removeAttribute('aria-label');
+  if (S.submitting) {
+    btn.append(icon('loader-circle', 20, 'spin'), 'Sending…');
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+  btn.dataset.mode = all ? 'submit' : 'next';
+  if (all) btn.append('Submit vote');
+  else {
+    btn.append('Next question', el('span', { class: 'go-count', 'aria-hidden': 'true', text: ` · ${n}/${params.length}` }));
+    btn.setAttribute('aria-label', `Next question, ${n} of ${params.length} set`);
+  }
+  if (all && S.v3d.wasComplete === false) pulsePrimary();
+  S.v3d.wasComplete = all;
+}
+
+function onPrimary(e) {
+  if (!S.draft || S.submitting) return;
+  const next = S.cfg.params.find((p) => !isAnswered(p));
+  if (next) openQuestionSheet(next.key, e && e.currentTarget);
+  else submit3d();
+}
+
+function submit3d() {
+  if (!S.draft || S.submitting) return;
+  const missing = S.cfg.params.find((p) => !isAnswered(p));
+  if (missing) {
+    S.hint = 'Pick one option to continue.';
+    openQuestionSheet(missing.key, document.getElementById('go-3d'));
+    return;
+  }
+  closeSheet(false);
+  submit();
+}
+
+// Refresh the pill, the guided button, an open question list and the pins in place (no re-mount).
 function refreshOverlays() {
   if (!use3d() || !STAGE_VIEWS.includes(S.curView)) return;
-  const line = document.getElementById('ov-line');
-  if (line) renderLine(line, lineParts(S.curView, currentRound()));
+  renderStatusPill();
   if (S.curView === 'questions' && S.draft) {
-    const params = S.cfg.params;
-    const n = params.filter(isAnswered).length;
-    const count = document.getElementById('q-count');
-    if (count) count.textContent = `${n}/${params.length}`;
-    const qb = document.getElementById('q-open');
-    if (qb) qb.setAttribute('aria-label', `Questions (${n} of ${params.length} set)`);
-    updateVoteBar();
+    updatePrimary();
     if (sheet.kind === 'list') renderQuestionRows();
   }
   syncStage();
@@ -940,55 +1084,26 @@ function refreshVoteUI() {
   if (use3d()) refreshOverlays();
 }
 
-function updateVoteBar() {
-  const btn = document.getElementById('submit-3d');
-  if (!btn) return;
-  btn.textContent = '';
-  if (S.submitting) {
-    btn.append(icon('loader-circle', 20, 'spin'), 'Sending…');
-    btn.disabled = true;
-    btn.removeAttribute('aria-disabled');
-    return;
-  }
-  btn.disabled = false;
-  btn.append('Submit vote');
-  if (S.cfg.params.every(isAnswered)) btn.removeAttribute('aria-disabled');
-  else btn.setAttribute('aria-disabled', 'true');
-}
-
-function submit3d() {
-  if (!S.draft || S.submitting) return;
-  const missing = S.cfg.params.find((p) => !isAnswered(p));
-  if (missing) {
-    S.hint = 'Pick one option to continue.';
-    openQuestionSheet(missing.key, document.getElementById('submit-3d'));
-    return;
-  }
-  closeSheet(false);
-  submit();
-}
-
-// The overlays cover bands of the scene: pins avoid them, tour chips sit above the bottom one,
-// and the camera centres the model between them (or between the top band and an open sheet).
+// Covered bands: pins avoid the header and the bottom row, tour chips sit above the bottom row,
+// and the camera centres the model between them (or between the header and an open sheet).
 let ovRO = null;
 let insets = { top: 0, bottom: 0 };
 function watchOverlays() {
   if (!('ResizeObserver' in window)) { requestAnimationFrame(applyInsets); return; }
   if (!ovRO) ovRO = new ResizeObserver(() => applyInsets());
   ovRO.disconnect();
-  for (const id of ['ov-top', 'ov-bottom']) { const n = document.getElementById(id); if (n) ovRO.observe(n); }
+  const bottom = document.getElementById('ov-bottom');
+  if (bottom) ovRO.observe(bottom);
   if (dom.header) ovRO.observe(dom.header);
   requestAnimationFrame(applyInsets);
 }
 
 function applyInsets() {
   const viewer = S.v3d.viewer;
-  const top = document.getElementById('ov-top');
   const bottom = document.getElementById('ov-bottom');
-  if (!viewer || !top || !bottom) return;
-  const h = window.innerHeight;
-  const topPx = Math.max(dom.header ? dom.header.getBoundingClientRect().bottom : 0, top.getBoundingClientRect().bottom);
-  const botPx = Math.max(0, h - bottom.getBoundingClientRect().top);
+  if (!viewer || !bottom || !dom.header) return;
+  const topPx = dom.header.getBoundingClientRect().bottom;
+  const botPx = Math.max(0, window.innerHeight - bottom.getBoundingClientRect().top);
   insets = { top: topPx, bottom: botPx };
   viewer.setOverlayInsets(insets);
   if (!sheet.root || !sheet.focusModel) viewer.setViewInset(botPx, topPx);
@@ -1034,6 +1149,7 @@ function showSheet({ kind, key = null, content, opener = null, focusModel = fals
   const replacing = !!sheet.root;
   const keepOpener = replacing ? sheet.opener : null;
   if (replacing) closeSheet(false, true);
+  if (reveal) reveal.collapse(true);
   S.v3d.sheetKey = key;
   const dlg = el('div', {
     class: 'sheet' + (compact ? ' compact' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title',
@@ -1098,7 +1214,6 @@ function openQuestionSheet(key, opener) {
   const params = S.cfg.params;
   const p = params.find((x) => x.key === key);
   if (!p || !S.draft || S.submitting) return;
-  if (S.v3d.version !== 'yours') { S.v3d.version = 'yours'; if (stage.verSeg) stage.verSeg.sync(); }
   const i = params.indexOf(p);
   const opts = { titleId: 'sheet-title', explId: 'sheet-expl', hintId: 'sheet-hint', idPrefix: 'sheet', onChange: refreshVoteUI };
   const hintText = S.hint || '';
@@ -1115,7 +1230,7 @@ function openQuestionSheet(key, opener) {
   });
 }
 
-// Fallback to the pins: all questions as rows (a pin can be hidden at some angles).
+// All questions as rows (reachable from (i); a pin can be hidden at some angles).
 function renderQuestionRows() {
   const list = document.getElementById('sheet-qrows');
   if (!list || !S.draft) return;
@@ -1126,9 +1241,9 @@ function renderQuestionRows() {
     return el('li', null, el('button', {
       class: 'q-row', type: 'button', dataset: { q: p.key, state: set ? 'answered' : 'todo' }, 'aria-haspopup': 'dialog',
       'aria-label': `Question ${i + 1}, ${p.label}: ${set ? value : 'not set yet'}`,
-      onclick: () => openQuestionSheet(p.key, document.getElementById('q-open')),
+      onclick: () => openQuestionSheet(p.key, dom.infoBtn),
     },
-    el('span', { class: 'q-row-badge' }, set ? icon('check', 18) : String(i + 1)),
+    el('span', { class: 'q-row-badge' }, set ? icon('check', 18) : null),
     el('span', { class: 'q-row-text' }, el('span', { class: 'q-row-label', text: p.label }), el('span', { class: 'q-row-value', text: value })),
     icon('chevron-right', 20)));
   }));
@@ -1143,7 +1258,6 @@ function openQuestionsList(opener) {
     content: [
       sheetHead(`${n} of ${params.length} set`),
       el('h2', { class: 'sheet-h2', id: 'sheet-title', tabindex: '-1', text: 'Questions' }),
-      el('p', { class: 'q-explainer', text: 'Each question is also a pin on its element in the model.' }),
       el('ul', { class: 'q-rows', id: 'sheet-qrows', 'aria-label': 'Questions' }),
     ],
   });
@@ -1184,17 +1298,18 @@ function infoSections(prefix) {
 }
 
 function openInfoSheet(opener) {
+  const voting = S.curView === 'questions' && S.draft && use3d();
+  const n = voting ? S.cfg.params.filter(isAnswered).length : 0;
   showSheet({
     kind: 'info', opener,
     content: [
       sheetHead(S.cfg.profile.session_title || 'Plurarch'),
       el('h2', { class: 'sr-only', id: 'sheet-title', tabindex: '-1', text: 'Rules of the game and privacy' }),
-      el('div', { class: 'p-info sheet-info' }, infoSections('sh'),
-        el('div', { class: 'p-divider', 'aria-hidden': 'true' }),
-        el('section', { class: 'notice' },
-          el('h2', { class: 'notice-title t-title', text: 'Prefer a list?' }),
-          el('p', { class: 't-secondary', text: 'Answer the questions one per screen, without the 3D model.' }),
-          el('button', { class: 'btn btn-gray sheet-list-btn', type: 'button', onclick: () => setLayoutPref('list') }, icon('list', 18), 'List view'))),
+      el('div', { class: 'sheet-actions' },
+        voting ? el('button', { class: 'btn btn-gray', type: 'button', onclick: () => openQuestionsList(dom.infoBtn) },
+          icon('list-checks', 18), `All questions · ${n}/${S.cfg.params.length}`) : null,
+        el('button', { class: 'btn btn-gray', type: 'button', onclick: () => setLayoutPref('list') }, icon('list', 18), 'List view')),
+      el('div', { class: 'p-info sheet-info' }, infoSections('sh')),
       doneButton('Close'),
     ],
   });
@@ -1218,29 +1333,26 @@ function openPinCard(key, opener) {
   const params = S.cfg.params;
   const p = params.find((x) => x.key === key);
   if (!p) return;
-  const i = params.indexOf(p);
   const view = S.curView;
   const round = currentRound();
   const rows = [];
   let note = null;
   if (view === 'decision' && S.decision) {
     const r = decisionRows(S.decision, params).find((x) => x.param.key === key);
-    const v = verdictOf(S.decision);
     rows.push(['Applied', r ? r.appliedText : fmtParamValue(p, appliedValue(S.decision, p))]);
     if (r && r.voted !== undefined) rows.push(['Room voted', r.votedText]);
-    if (r && r.changed) note = r.reason || (v && v !== 'REJECTED' ? 'Changed by the reviewer agent.' : 'Not applied.');
+    if (r && r.changed && r.reason) note = r.reason;
   } else {
     if (view === 'voted' && round) {
       const mine = votedAnswers(round.id) || {};
       if (mine[key] != null) rows.push(['Your vote', fmtParamValue(p, mine[key])]);
     }
     rows.push(['Now', fmtParamValue(p, appliedValue(S.decision, p))]);
-    note = view === 'waiting' ? 'You can vote on this when the next round opens.' : null;
   }
   showSheet({
     kind: 'card', key, opener, focusModel: true, compact: true,
     content: [
-      sheetHead(`${p.label} · question ${i + 1} of ${params.length}`),
+      sheetHead(p.label),
       el('h2', { class: 'sheet-h2', id: 'sheet-title', tabindex: '-1', text: p.question }),
       el('dl', { class: 'card-values' }, rows.map(([k, v]) => el('div', null, el('dt', { text: `${k}:` }), el('dd', { text: v })))),
       note ? el('p', { class: 'q-explainer card-note', text: note }) : null,
@@ -1268,6 +1380,7 @@ function renderPills() {
   } else {
     dom.netPill.hidden = true;
   }
+  if (document.documentElement.classList.contains('is-3d')) renderStatusPill();
 }
 
 function setLayoutClass(threeD) {
@@ -1276,15 +1389,17 @@ function setLayoutClass(threeD) {
 
 function render() {
   if (!S.cfg && !S.configError) { renderPills(); return; }
-  renderPills();
   const view = resolveView();
   const round = currentRound();
   if (use3d() && STAGE_VIEWS.includes(view)) ensureViewer(); // may switch to the fallback at once (?v3d=0)
   const threeD = wantsStage(view);
   const sub = view === 'questions' ? questionsMode() : '';
-  if (sheet.root && (!threeD || (sheet.kind === 'question' && view !== 'questions') || (sheet.kind === 'list' && view !== 'questions')
+  if (sheet.root && (!threeD || ((sheet.kind === 'question' || sheet.kind === 'list') && view !== 'questions')
     || (sheet.kind === 'details' && view !== 'decision') || (sheet.kind === 'card' && view !== S.curView))) closeSheet(false);
+  if (reveal && view !== 'decision') reveal.collapse(true);
+  const prevView = S.lastView;
   S.curView = view;
+  renderPills();
   const key = JSON.stringify([
     view, threeD, round && round.id, round && round.status, S.decisionId,
     sub === 'list' && S.draft ? S.draft.step : null,
@@ -1313,17 +1428,37 @@ function render() {
   }
   mount(dom.view, nodes);
   updateBarVisibility(view === 'questions' && !threeD);
-  if (threeD) { refreshOverlays(); watchOverlays(); } else if (view === 'questions') updateBar();
+  if (threeD) {
+    S.v3d.wasComplete = null;
+    refreshOverlays();
+    watchOverlays();
+  } else if (view === 'questions') updateBar();
 
-  if (view !== S.lastView) {
-    if (view === 'questions' && S.lastView && S.lastView !== 'loading') {
+  if (view !== prevView) {
+    const live = prevView && prevView !== 'loading'; // a change seen on this page, not the first screen
+    if (view === 'questions') {
       announce(`${roundName(round && round.number)} is open. ${S.cfg.params.length} questions.`);
-      if (threeD) toast('Voting is open');
+      if (threeD && live) showSplash('Vote now', pulsePrimary);
+      else if (threeD) setTimeout(pulsePrimary, 900);
+    }
+    if (view === 'voted' && prevView === 'questions' && threeD) {
+      popCheck();
+      toast('Watch the big screen');
+      announce('Vote recorded');
     }
     if (view === 'decision' && S.decision) announce(`Decision: ${verdictOf(S.decision) || 'no change'}`);
     if (view === 'reviewing') announce('Voting closed. The reviewer agent is reviewing.');
     S.lastView = view;
   }
+  if (view === 'decision' && S.revealId && S.revealId === S.decisionId) {
+    S.revealId = null;
+    if (threeD) showReveal(S.decision);
+  }
+  if (threeD && S.closedNotice && S.v3d.closedToast !== S.closedNotice.roundId) {
+    S.v3d.closedToast = S.closedNotice.roundId;
+    toast('The round closed before your vote was sent');
+  }
+  if (threeD && S.submitError) toast(S.submitError);
 }
 
 function updateBarVisibility(show) {
@@ -1395,6 +1530,10 @@ async function boot() {
   window.addEventListener('online', () => schedulePoll(200 + Math.random() * 800));
   window.addEventListener('pageshow', (e) => { if (e.persisted) schedulePoll(100 + Math.random() * 500); });
   window.addEventListener('resize', () => requestAnimationFrame(applyInsets));
+  // The countdown in the status pill: text only, once a second, only while it can change.
+  setInterval(() => {
+    if (!document.hidden && use3d() && (S.curView === 'questions' || S.curView === 'voted')) renderStatusPill();
+  }, 1000);
   poll();
 }
 

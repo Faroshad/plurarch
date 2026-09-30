@@ -14,12 +14,15 @@
 //     quality: 'auto' | 0 | 1 | 2,  // 0 minimal, 1 low, 2 high; a number pins the tier (no fps watchdog)
 //     canvasLabel,                  // aria-label of the canvas
 //     insetTop: 0,                  // px at the top covered by the app's own controls (pins avoid it)
+//     tourHint: true,               // one-time "drag to look around" hint when the tour starts
 //   });
 //   v.setModel(model, { keepCamera })  // Model per docs/MODEL.md; applied at most once per frame
 //   v.setMode('orbit' | 'tour'); v.getMode(); v.resetView()
 //   v.goToStop(id)
-//   v.setPins([{ question, label, value, state: 'todo'|'answered'|'active'|'changed'|'info', num, tag, aria }])
+//   v.setPins([{ question, label, value, state: 'todo'|'answered'|'active'|'changed'|'info', badge, num, tag, aria }])
+//        badge: 'check' | 'ring' | 'num' | 'none' (default: todo -> ring, answered -> check, others -> none)
 //   v.highlight(questionKey | null)    // accent tint + rim on that question's parts, others dimmed
+//   v.pulse(questionKey, ms)           // highlight that pulses for ms (decision reveal), then clears
 //   v.focus(questionKey)               // turn the camera toward that question's pin
 //   v.setViewInset(bottomPx, topPx)    // covered bands (a sheet, overlays): keeps the model centred between
 //   v.setOverlayInsets({ top, bottom }) // app overlays: pins avoid these bands; tour stop chips sit above `bottom`
@@ -127,7 +130,7 @@ function checkSvg() {
 export function createViewer(container, options = {}) {
   const o = {
     onPinTap() {}, onReady() {}, onFallback() {}, onModeChange() {}, onStopChange() {},
-    questionTags: null, quality: 'auto', canvasLabel: '3D model of the pavilion', insetTop: 0,
+    questionTags: null, quality: 'auto', canvasLabel: '3D model of the pavilion', insetTop: 0, tourHint: true,
     ...options,
   };
   const qOf = tagMatcher(o.questionTags || {});
@@ -159,7 +162,8 @@ export function createViewer(container, options = {}) {
   const meshes = new Map(); // material key -> Mesh
   const matCache = new Map(); // material key -> { sig, mat }
   const texCache = new Map(); // kind -> Texture
-  const HL = { uHL: { value: 0 }, uHLColor: { value: null } };
+  const HL = { uHL: { value: 0 }, uHLColor: { value: null }, uHLPulse: { value: 0 } };
+  let pulseKey = null; let pulseT0 = 0; let pulseUntil = 0;
 
   let disposed = false; let failed = false; let isReady = false;
   let model = null; let pending = null; let firstModel = true;
@@ -468,9 +472,10 @@ export function createViewer(container, options = {}) {
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uHL = HL.uHL;
       shader.uniforms.uHLColor = HL.uHLColor;
+      shader.uniforms.uHLPulse = HL.uHLPulse;
       shader.vertexShader = 'attribute float aQ;\nvarying float vQ;\n' + shader.vertexShader
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvQ = aQ;');
-      shader.fragmentShader = 'uniform float uHL;\nuniform vec3 uHLColor;\nvarying float vQ;\n' + shader.fragmentShader
+      shader.fragmentShader = 'uniform float uHL;\nuniform float uHLPulse;\nuniform vec3 uHLColor;\nvarying float vQ;\n' + shader.fragmentShader
         .replace('#include <color_fragment>', [
           '#include <color_fragment>',
           '\tfloat hlOn = step( 0.5, uHL );',
@@ -483,11 +488,11 @@ export function createViewer(container, options = {}) {
           '\t{',
           '\t\tfloat hlRim = 1.0 - abs( dot( normalize( normal ), normalize( vViewPosition ) ) );',
           // the element: a touch brighter, plus a thin accent rim toward grazing angles
-          '\t\ttotalEmissiveRadiance += hlMe * ( diffuseColor.rgb * 0.12 + uHLColor * ( 0.025 + 0.3 * hlRim * hlRim * hlRim ) );',
+          '\t\ttotalEmissiveRadiance += hlMe * ( diffuseColor.rgb * ( 0.12 + 0.4 * uHLPulse ) + uHLColor * ( 0.025 + 0.3 * hlRim * hlRim * hlRim + 0.22 * uHLPulse ) );',
           '\t}',
         ].join('\n'));
     };
-    mat.customProgramCacheKey = () => 'plurarch-hl-2';
+    mat.customProgramCacheKey = () => 'plurarch-hl-3';
   }
 
   function materialFor(key, def) {
@@ -831,6 +836,7 @@ export function createViewer(container, options = {}) {
     if (stepIntro(t)) active = true;
     if (stepInertia(dt)) active = true;
     if (stepDestRing(t)) active = true;
+    if (stepPulse(t)) active = true;
     let idleOnly = false;
     if (mode === 'orbit' && controls.enabled) {
       const idle = idleActive(t);
@@ -954,6 +960,23 @@ export function createViewer(container, options = {}) {
     applyProjection();
     occDirty = true;
     return true;
+  }
+
+  function applyHL() {
+    const key = pulseKey || hlKey;
+    const idx = key ? qKeys.indexOf(key) + 1 : 0;
+    HL.uHL.value = idx > 0 ? idx : 0;
+  }
+
+  function stepPulse(t) {
+    if (!pulseUntil) return false;
+    if (t < pulseUntil) {
+      HL.uHLPulse.value = 0.5 - 0.5 * Math.cos(((t - pulseT0) / 900) * Math.PI * 2);
+      return true;
+    }
+    pulseUntil = 0; pulseKey = null; HL.uHLPulse.value = 0;
+    applyHL();
+    return false;
   }
 
   function stepDestRing(t) {
@@ -1128,7 +1151,7 @@ export function createViewer(container, options = {}) {
   }
 
   function showHint() {
-    if (showHint.done) return;
+    if (showHint.done || !o.tourHint) return;
     showHint.done = true;
     hint.hidden = false;
     hint.classList.add('is-on');
@@ -1327,16 +1350,20 @@ export function createViewer(container, options = {}) {
     const c = pinCands.get(rec.q);
     const label = item.label || (c && c.label) || rec.q;
     const state = ['todo', 'answered', 'active', 'changed', 'info'].includes(item.state) ? item.state : 'todo';
-    const sig = JSON.stringify([label, item.value, state, item.num, item.tag, item.aria]);
+    const sig = JSON.stringify([label, item.value, state, item.num, item.tag, item.aria, item.badge]);
     if (sig === rec.sig) return;
     rec.sig = sig;
     rec.btn.dataset.state = state;
     rec.wrap.dataset.state = state;
     rec.label.textContent = label;
     rec.value.textContent = item.value != null ? String(item.value) : '';
+    const badge = ['check', 'ring', 'num', 'none'].includes(item.badge) ? item.badge
+      : state === 'todo' ? 'ring' : state === 'answered' ? 'check' : 'none';
+    rec.btn.dataset.badge = badge;
     rec.badge.textContent = '';
-    if (state === 'answered') rec.badge.appendChild(checkSvg());
-    else rec.badge.textContent = item.num != null ? String(item.num) : '';
+    rec.badge.hidden = badge === 'none';
+    if (badge === 'check') rec.badge.appendChild(checkSvg());
+    else if (badge === 'num') rec.badge.textContent = item.num != null ? String(item.num) : '';
     rec.tag.hidden = state !== 'changed';
     rec.tag.textContent = state === 'changed' ? String(item.tag || 'Changed') : '';
     const stateWord = { todo: 'not set yet', answered: 'set', active: 'open', changed: String(item.tag || 'changed').toLowerCase(), info: 'current value' }[state];
@@ -1680,8 +1707,13 @@ export function createViewer(container, options = {}) {
       const key = q || null;
       if (key === hlKey) return;
       hlKey = key;
-      const idx = hlKey ? qKeys.indexOf(hlKey) + 1 : 0;
-      HL.uHL.value = idx > 0 ? idx : 0;
+      applyHL();
+      invalidate();
+    },
+    pulse(q, ms = 3000) {
+      if (!q || reducedMotion()) return;
+      pulseKey = q; pulseT0 = now(); pulseUntil = pulseT0 + Math.max(300, ms);
+      applyHL();
       invalidate();
     },
     focus(q) { focusQuestion(q); },

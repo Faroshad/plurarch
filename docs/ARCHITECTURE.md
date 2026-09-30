@@ -49,7 +49,12 @@ skipped decisions), `metrics` (json), `duration_s` (number), `created_at`
 
 `session_status` (view, one row per active session): `session_id`, `session_title`, `use_case`,
 `round_id`, `round_number`, `round_status`, `round_opened_at`, `round_closed_at`,
-`latest_decision_id`, `updated_at`. The newest round of the session is the current round.
+`round_participants`, `latest_decision_id`, `updated_at`. The newest round of the session is the
+current round.
+
+`round_participants` / `rounds.participants` is the live number of distinct participants of the
+round. It is written by the orchestrator every ~2.5 s while the round is open, and finally when it
+closes. It is an aggregate number only; phones can never read votes.
 
 ## JSON shapes
 
