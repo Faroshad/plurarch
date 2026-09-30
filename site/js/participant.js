@@ -1,20 +1,22 @@
 // Plurarch participant app: anonymous, mobile-first. Polls the tiny status endpoint with jitter,
 // submits all answers in one call, and shows the decision. No realtime connection is ever opened here.
 //
-// Voting has two views that share one draft:
-//   - 3D (default): the pavilion model (js/viewer3d.js, three.js loaded lazily) with one pin per
-//     question on its element; a pin or a question row opens a bottom sheet with the same controls
-//     as the stepper, and the model rebuilds live from the draft ("Your version").
-//   - List view: the original one-question-per-screen stepper. It is also the fallback whenever
-//     WebGL2 or the CDN is unavailable (then the static design image is shown instead of the model).
-// URL flags for testing: ?v3d=0 forces the fallback, ?q=0|1|2 pins the 3D quality tier.
+// Two layouts share one state and one draft:
+//   - 3D (default): the pavilion model fills the whole screen (js/viewer3d.js, three.js loaded lazily).
+//     The page never scrolls: only thin dark overlays sit on the scene (status line or decision
+//     banner at the top, view toggles and Submit at the bottom). Every question is a pin on its
+//     element; a pin opens a bottom sheet with the same controls as the stepper, and the model
+//     rebuilds live from the draft ("Your version"). Rules, privacy and "List view" live in the (i) sheet.
+//   - List view: the original page with the one-question-per-screen stepper and the design drawing.
+//     It is also the fallback whenever WebGL2 or the CDN is unavailable.
+// URL flags for testing: ?v3d=0 forces the fallback, ?q=0|1|2 pins the 3D quality tier, ?debug=1.
 
 import { createBackend, isRetryable } from './backend.js';
 import {
   el, mount, icon, loadIcons, loadAppConfig, store, sessionStore, randomId, sleep, asObject,
-  verdictBadge, verdictOf, decisionRows, appliedValue, snapToStep, wordmark, reducedMotion,
+  verdictBadge, verdictOf, decisionRows, appliedValue, snapToStep, wordmark, reducedMotion, toast,
 } from './ui.js';
-import { fmtParamValue, fmtSliderNumber, fmtTime, joinDot, fmtNum, toNum } from './format.js';
+import { fmtParamValue, fmtSliderNumber, fmtTime, fmtTimeS, joinDot, fmtNum, toNum } from './format.js';
 
 const URLQ = new URLSearchParams(window.location.search);
 const VIEW_KEY = 'plurarch:view';
@@ -29,6 +31,7 @@ const S = {
   draft: null, // { roundId, roundNumber, step, answers }
   closedNotice: null, // { roundId, number } when a draft was dropped because the round closed
   pollProblem: false,
+  lastPollAt: 0, // last successful status check (shown as "checked 12:04:31")
   submitProblem: false,
   submitting: false,
   submitError: '',
@@ -60,6 +63,8 @@ const dom = {
   bar: document.getElementById('bar'),
   barBtn: document.getElementById('bar-btn'),
   roundPill: document.getElementById('round-pill'),
+  header: document.querySelector('.p-header'),
+  infoBtn: document.getElementById('info-btn'),
   netPill: document.getElementById('net-pill'),
   announce: document.getElementById('announce'),
   brand: document.getElementById('brand'),
@@ -192,6 +197,7 @@ async function poll() {
     polling = false;
   }
   S.pollProblem = !ok;
+  if (ok) S.lastPollAt = Date.now();
   render();
   if (!document.hidden) schedulePoll(ok ? nextDelay() : Math.min(nextDelay() * 1.5, 12000));
 }
@@ -446,7 +452,8 @@ function sliderControl(p, opts = {}) {
   );
 }
 
-/* ------------------------------------------------------------------ views */
+/* ------------------------------------------------------------------ views: list layout */
+// The classic page: used for "List view" and whenever 3D is unavailable (then without the switch).
 function viewLoading() {
   return el('div', { class: 'p-hero' },
     el('h1', { class: 'p-state-title', text: 'Connecting…' }),
@@ -473,19 +480,26 @@ function closedNoticeCard(round) {
   );
 }
 
+// "3D model" switch shown at the top of the list layout while 3D can still be used.
+function view3dSwitch() {
+  if (S.v3d.status === 'failed' || URLQ.get('v3d') === '0') return null;
+  return el('div', { class: 'view-switch' },
+    el('button', { class: 'text-btn', type: 'button', onclick: () => setLayoutPref('3d') }, icon('box', 18), '3D model'));
+}
+
 function viewWaiting() {
   const noSession = !S.status;
   return el('div', { class: 'p-stack' },
+    view3dSwitch(),
     el('div', { class: 'p-hero anim-rise' },
       el('h1', { class: 'p-state-title', text: noSession ? 'Waiting for the session to start' : 'Waiting for the next round' }),
       el('p', { class: 'p-state-text', text: 'Keep this page open. The questions appear here as soon as voting opens.' }),
     ),
-    stageOrTile(),
+    designTile(),
   );
 }
 
 function viewQuestions(round) {
-  if (questionsMode() === '3d') return viewVote3d(round);
   const d = ensureDraft(round);
   const params = S.cfg.params;
   const i = Math.min(d.step, params.length - 1);
@@ -495,8 +509,7 @@ function viewQuestions(round) {
     : el('span', { 'aria-hidden': 'true' });
   const hintText = S.submitError || S.hint || '';
   return el('div', { class: 'q-screen anim-rise' },
-    S.v3d.status !== 'failed' ? el('div', { class: 'view-switch' },
-      el('button', { class: 'text-btn', type: 'button', onclick: () => setQuestionsMode('3d') }, icon('box', 18), '3D model')) : null,
+    view3dSwitch(),
     el('div', { class: 'q-top' }, back, stepDots(i, params.length)),
     el('h1', { class: 'q-title', id: 'q-title', tabindex: '-1', text: p.question }),
     p.explainer ? el('p', { class: 'q-explainer', id: 'q-expl', text: p.explainer }) : null,
@@ -511,26 +524,28 @@ function viewVoted(round) {
     .filter((p) => answers[p.key] != null)
     .map((p) => el('li', null, el('span', { text: p.label }), el('b', { text: fmtParamValue(p, answers[p.key]) })));
   return el('div', { class: 'p-stack' },
+    view3dSwitch(),
     el('div', { class: 'p-card anim-slide-up' },
       el('div', { class: 'p-icon-circle' }, icon('check', 24)),
       el('h1', { class: 'p-state-title', text: 'Vote recorded' }),
       el('p', { class: 'p-state-text', text: `${roundName(round.number)} · When the round closes, the reviewer agent judges the room's proposal against the brief.` }),
       rows.length ? el('ul', { class: 'answers', 'aria-label': 'Your answers' }, rows) : null,
     ),
-    stageOrTile(),
+    designTile(),
   );
 }
 
 function viewReviewing(round) {
   const voted = hasVoted(round.id);
   return el('div', { class: 'p-stack' },
+    view3dSwitch(),
     closedNoticeCard(round),
     el('div', { class: 'p-decision anim-slide-up' },
       el('div', { class: 'p-icon-circle soft' }, icon('loader-circle', 24, 'spin')),
       el('h1', { class: 'p-state-title', text: voted ? 'The reviewer agent is reviewing your proposal…' : "The reviewer agent is reviewing the room's proposal…" }),
       el('p', { class: 'p-state-text', text: `${roundName(round.number)} is closed. The agent checks the hard rules and the brief's goals, tries alternatives if needed, and applies the result to the model.` }),
     ),
-    stageOrTile(),
+    designTile(),
   );
 }
 
@@ -573,8 +588,8 @@ function decisionCard(d) {
 function viewDecision(round) {
   const waiting = !round || round.status !== 'open';
   return el('div', { class: 'p-stack' },
+    view3dSwitch(),
     closedNoticeCard(round),
-    S.v3d.status !== 'failed' ? buildStage() : null,
     decisionCard(S.decision),
     waiting ? el('div', { class: 'p-hero' },
       el('p', { class: 'p-state-text', style: { marginTop: '0' } }, el('b', { text: 'Waiting for the next round.' }), ' Keep this page open.'),
@@ -592,32 +607,31 @@ function resolveView() {
   return 'reviewing';
 }
 
-/* ------------------------------------------------------------------ 3D stage */
-// One persistent stage (one WebGL context for the whole visit). Views place it in their tree;
-// moving the element keeps the canvas and its context alive.
-const stage = { root: null, host: null, poster: null, bar: null, modeSeg: null, verSeg: null };
+/* ------------------------------------------------------------------ 3D layout */
+// One persistent stage (one WebGL context for the whole visit): a fixed, full-screen scene. Views
+// re-parent it together with their overlays; moving the element keeps the canvas and its context.
+const stage = { root: null, host: null, poster: null, modeSeg: null, verSeg: null };
+const STAGE_VIEWS = ['waiting', 'questions', 'voted', 'reviewing', 'decision'];
 
-function questionsMode() {
-  return S.v3d.status === 'failed' ? 'list' : S.v3d.pref;
+function use3d() {
+  return S.v3d.status !== 'failed' && S.v3d.pref === '3d' && URLQ.get('v3d') !== '0';
 }
+function questionsMode() { return use3d() ? '3d' : 'list'; }
+function wantsStage(view) { return use3d() && STAGE_VIEWS.includes(view); }
 
-function wantsStage(view) {
-  return view === 'waiting' || view === 'voted' || view === 'reviewing' || view === 'decision'
-    || (view === 'questions' && questionsMode() === '3d');
-}
-
-function setQuestionsMode(m) {
-  S.v3d.pref = m === 'list' ? 'list' : '3d';
+function setLayoutPref(pref) {
+  S.v3d.pref = pref === 'list' ? 'list' : '3d';
   sessionStore.set(VIEW_KEY, S.v3d.pref);
   closeSheet(false);
   S.hint = '';
+  S.viewKey = '';
   render();
   window.scrollTo(0, 0);
-  if (S.v3d.pref === 'list') focusTitle();
+  if (S.v3d.pref === 'list' && S.curView === 'questions') focusTitle();
 }
 
 function segControl(label, items, get, onPick) {
-  const node = el('div', { class: 'seg seg-float', role: 'group', 'aria-label': label });
+  const node = el('div', { class: 'seg seg-ov', role: 'group', 'aria-label': label });
   const btns = items.map(([value, text, aria]) => {
     const b = el('button', { class: 'seg-btn', type: 'button', 'aria-pressed': 'false', 'aria-label': aria || null, text });
     b.addEventListener('click', () => onPick(value));
@@ -639,13 +653,8 @@ function buildStage() {
   stage.modeSeg = segControl('View', [['orbit', 'Orbit', 'Orbit: turn the model'], ['tour', 'Tour', 'Tour: walk inside']], () => S.v3d.mode, onModeSeg);
   stage.modeSeg.setDisabled(S.v3d.status !== 'ready');
   stage.verSeg = segControl('Which design', [['yours', 'Your version'], ['current', 'Current', 'Current design']], () => S.v3d.version, onVersionSeg);
-  stage.bar = el('div', { class: 'p-stage-bar' }, stage.modeSeg.node, stage.verSeg.node);
-  stage.root = el('section', { class: 'p-stage', 'aria-label': 'The pavilion in 3D' }, stage.poster, stage.host, stage.bar);
+  stage.root = el('section', { class: 'p-stage', 'aria-label': 'The pavilion in 3D' }, stage.poster, stage.host);
   return stage.root;
-}
-
-function stageOrTile(caption) {
-  return S.v3d.status === 'failed' ? designTile(caption) : buildStage();
 }
 
 function ensureViewer() {
@@ -661,8 +670,7 @@ function ensureViewer() {
     v.viewer = vm.createViewer(stage.host, {
       questionTags: pm.QUESTION_TAGS,
       quality: q != null && /^[0-2]$/.test(q) ? Number(q) : 'auto',
-      insetTop: 58,
-      canvasLabel: '3D model of the pavilion. Drag to turn it. The pins mark the questions.',
+      canvasLabel: '3D model of the pavilion. Drag to turn it, pinch to zoom, drag with two fingers to move. The pins mark the questions.',
       onPinTap,
       onReady: onViewerReady,
       onFallback: viewerFailed,
@@ -670,12 +678,14 @@ function ensureViewer() {
         v.mode = m;
         stage.modeSeg.sync();
         syncStage();
+        requestAnimationFrame(applyInsets);
       },
     });
     if (URLQ.get('debug') === '1') window.__plurarch = { S, viewer: v.viewer, render };
     v.modelKey = '';
     v.pinsKey = '';
     syncStage();
+    applyInsets();
   }).catch((e) => {
     console.warn('[plurarch] 3D view unavailable:', e);
     viewerFailed('load');
@@ -688,6 +698,7 @@ function onViewerReady() {
   stage.root.classList.add('is-ready');
   stage.modeSeg.setDisabled(false);
   syncStage();
+  applyInsets();
 }
 
 function viewerFailed(reason) {
@@ -698,7 +709,7 @@ function viewerFailed(reason) {
   closeSheet(false);
   if (v.viewer) { try { v.viewer.dispose(); } catch (_) { /* gone */ } }
   v.viewer = null;
-  S.viewKey = ''; // re-mount the current screen with the list view and the design image
+  S.viewKey = ''; // re-mount the current screen in the list layout
   render();
 }
 
@@ -757,9 +768,25 @@ function decisionPins() {
   const tag = v && v !== 'REJECTED' ? 'Changed' : 'Not applied';
   return decisionRows(S.decision, S.cfg.params).map((r, i) => ({
     question: r.param.key, num: i + 1, value: r.appliedText,
-    state: r.changed ? 'changed' : 'answered', tag,
-    aria: `${r.param.label}: ${r.appliedText} applied${r.voted !== undefined ? `, the room voted ${r.votedText}` : ''}${r.changed ? ` (${tag.toLowerCase()})` : ''}. Highlights it on the model.`,
+    state: S.v3d.sheetKey === r.param.key ? 'active' : r.changed ? 'changed' : 'answered', tag,
+    aria: `${r.param.label}: ${r.appliedText} applied${r.voted !== undefined ? `, the room voted ${r.votedText}` : ''}${r.changed ? ` (${tag.toLowerCase()})` : ''}. Shows the details.`,
   }));
+}
+
+// Read-only pins (waiting, voted, reviewing): the values the model shows.
+function valuePins(view) {
+  const vals = stageParams(view);
+  return S.cfg.params.map((p, i) => ({
+    question: p.key, num: i + 1, value: fmtParamValue(p, vals[p.key]),
+    state: S.v3d.sheetKey === p.key ? 'active' : 'info',
+    aria: `${p.label}: ${fmtParamValue(p, vals[p.key])}. Shows the question.`,
+  }));
+}
+
+function stagePins(view) {
+  if (view === 'questions') return votePins();
+  if (view === 'decision' && S.decision) return decisionPins();
+  return valuePins(view);
 }
 
 function modelFor(params) {
@@ -774,20 +801,16 @@ function modelFor(params) {
   return { key, model: m };
 }
 
-// Push the current screen's design, pins and highlight to the viewer (cheap when nothing changed).
+// Push the current screen's design, pins, idle turn and highlight to the viewer (cheap when unchanged).
 let modelRaf = 0;
 let modelParams = null;
 function syncStage() {
   const v = S.v3d;
-  if (!stage.root || v.status === 'failed') return;
+  if (!stage.root || !v.viewer) return;
   const view = S.curView;
-  const onStage = wantsStage(view);
-  const version = view === 'questions' || view === 'voted';
-  stage.verSeg.node.hidden = !version;
-  stage.root.classList.toggle('compact', view === 'waiting' || view === 'voted' || view === 'reviewing');
-  if (!v.viewer || !onStage) return;
+  if (!wantsStage(view)) return;
   if (v.stageView !== view) {
-    // Entering a screen with pins (voting, decision) after the idle turn: bring the camera home.
+    // A new screen after the idle turn (or a tour): bring the orbit camera home so the pins show.
     const prev = v.stageView;
     v.stageView = view;
     if (prev && (view === 'questions' || view === 'decision') && v.status === 'ready' && v.viewer.getMode() === 'orbit') v.viewer.resetView();
@@ -809,84 +832,117 @@ function syncStage() {
       }
     });
   }
-  const pins = view === 'questions' ? votePins() : view === 'decision' && S.decision ? decisionPins() : [];
+  const pins = stagePins(view);
   const pk = JSON.stringify(pins);
   if (pk !== v.pinsKey) { v.pinsKey = pk; v.viewer.setPins(pins); }
-  v.viewer.setIdleRotation(view === 'waiting' || view === 'voted' || view === 'reviewing');
-  v.viewer.highlight(view === 'questions' ? v.sheetKey : view === 'decision' ? v.highlight : null);
+  v.viewer.setIdleRotation((view === 'waiting' || view === 'voted' || view === 'reviewing') && !v.sheetKey);
+  v.viewer.highlight(v.sheetKey || null);
 }
 
 function onPinTap(key) {
-  if (S.curView === 'questions' && S.draft && questionsMode() === '3d') {
-    const btn = stage.host && stage.host.querySelector(`.v3d-pin[data-q="${CSS.escape(key)}"]`);
-    openSheet(key, btn);
-    return;
-  }
-  if (S.curView === 'decision') {
-    S.v3d.highlight = S.v3d.highlight === key ? null : key;
-    syncStage();
-    if (S.v3d.highlight && S.v3d.viewer) S.v3d.viewer.focus(key);
-    const pin = decisionPins().find((x) => x.question === key);
-    if (pin && S.v3d.highlight) announce(pin.aria.replace(' Highlights it on the model.', ''));
-  }
+  const btn = stage.host && stage.host.querySelector(`.v3d-pin[data-q="${CSS.escape(key)}"]`);
+  if (S.curView === 'questions' && S.draft && use3d()) openQuestionSheet(key, btn);
+  else openPinCard(key, btn);
 }
 
-/* ------------------------------------------------------------------ 3D voting screen */
-function viewVote3d(round) {
-  ensureDraft(round);
-  const params = S.cfg.params;
-  const hintText = S.submitError || S.hint || '';
-  const rows = params.map((p, i) => el('li', null, el('button', {
-    class: 'q-row', type: 'button', dataset: { q: p.key }, 'aria-haspopup': 'dialog',
-    onclick: (e) => openSheet(p.key, e.currentTarget),
-  },
-  el('span', { class: 'q-row-badge' }),
-  el('span', { class: 'q-row-text' }, el('span', { class: 'q-row-label', text: p.label }), el('span', { class: 'q-row-value' })),
-  icon('chevron-right', 20))));
-  return el('div', { class: 'p-stack anim-rise' },
-    buildStage(),
-    el('div', { class: 'vote-panel' },
-      el('div', { class: 'vote-progress' },
-        el('div', { class: 'vote-count', id: 'vote-count', role: 'status' }),
-        el('button', { class: 'text-btn', type: 'button', onclick: () => setQuestionsMode('list') }, icon('list', 18), 'List view')),
-      el('p', { class: 'vote-lead', text: 'Tap a pin on the model to answer its question, or pick one below.' }),
-      el('ul', { class: 'q-rows', 'aria-label': 'Questions' }, rows),
-      el('p', { class: 'q-hint' + (hintText ? ' alert' : ''), id: 'q-hint', role: 'status', text: hintText }),
-    ),
-  );
+/* ---- overlays */
+// Top: status line (or decision banner + live line). Bottom: toggles, then Questions + Submit.
+function liveLine(prefix) {
+  const problem = S.pollProblem || S.submitProblem;
+  return {
+    icon: problem ? 'spin' : 'live',
+    text: prefix,
+    sub: problem ? 'reconnecting…' : S.lastPollAt ? `live · checked ${fmtTimeS(S.lastPollAt)}` : 'live',
+  };
 }
 
-// Update progress, rows, pins, the submit button and the model in place (no re-mount).
-function refreshVoteUI() {
-  if (S.curView !== 'questions' || questionsMode() !== '3d' || !S.draft) return;
-  const params = S.cfg.params;
-  const n = params.filter(isAnswered).length;
-  const count = document.getElementById('vote-count');
-  if (count) {
-    const dots = el('span', { class: 'dots', 'aria-hidden': 'true' }, params.map((p) => el('i', { class: isAnswered(p) ? 'done' : '' })));
-    const text = `${n} of ${params.length}`;
-    if (count.dataset.text !== text) {
-      count.dataset.text = text;
-      mount(count, el('span', { text }), el('span', { class: 'of', text: 'set' }), dots);
+// The top pill already names the round ("Round 2 · open"), so the line never repeats it.
+function lineParts(view) {
+  switch (view) {
+    case 'questions': {
+      const n = S.cfg.params.filter(isAnswered).length;
+      return { icon: 'live', text: `Voting open · ${n} of ${S.cfg.params.length} set` };
     }
+    case 'voted': return { icon: 'check', text: 'Vote recorded', sub: 'the reviewer judges it when voting closes' };
+    case 'reviewing': return { icon: 'spin', text: 'Voting closed', sub: 'the reviewer agent is reviewing…' };
+    case 'decision': return liveLine('Waiting for the next round');
+    default: return liveLine(S.status ? 'Waiting for the next round' : 'Waiting for the session to start');
   }
-  for (const btn of dom.view.querySelectorAll('.q-row')) {
-    const p = params.find((x) => x.key === btn.dataset.q);
-    if (!p) continue;
-    const set = isAnswered(p);
-    const i = params.indexOf(p);
-    btn.dataset.state = set ? 'answered' : 'todo';
-    const badge = btn.querySelector('.q-row-badge');
-    mount(badge, set ? icon('check', 18) : String(i + 1));
-    btn.querySelector('.q-row-value').textContent = set ? fmtParamValue(p, S.draft.answers[p.key]) : 'Not set yet';
-    btn.setAttribute('aria-label', `Question ${i + 1}, ${p.label}: ${set ? fmtParamValue(p, S.draft.answers[p.key]) : 'not set yet'}`);
+}
+
+function renderLine(node, parts) {
+  const key = JSON.stringify(parts);
+  if (node.dataset.key === key) return;
+  node.dataset.key = key;
+  const ic = parts.icon === 'live' ? el('span', { class: 'live-dot', 'aria-hidden': 'true' })
+    : parts.icon === 'spin' ? icon('loader-circle', 16, 'spin')
+      : parts.icon === 'check' ? icon('check', 16) : null;
+  mount(node, ic, el('span', { class: 'ov-line-text', text: parts.text }), parts.sub ? el('span', { class: 'ov-line-sub', text: parts.sub }) : null);
+}
+
+function decisionSummary(d) {
+  const v = verdictOf(d);
+  if (!v) return 'No change this round';
+  if (v === 'REJECTED') return 'The design stays as it was';
+  const rows = decisionRows(d, S.cfg.params).filter((r) => r.changed);
+  if (!rows.length) return 'Applied as voted';
+  const first = rows[0];
+  const shortLabel = (p) => p.label.split(' ')[0];
+  return `${shortLabel(first.param)} ${first.votedText} → ${first.appliedText}${rows.length > 1 ? ` · +${rows.length - 1} more` : ''}`;
+}
+
+function decisionBanner() {
+  const d = S.decision;
+  return el('div', { class: 'ov-banner ov-glass', role: 'group', 'aria-label': 'Decision' },
+    verdictBadge(d),
+    el('span', { class: 'ov-banner-text', text: decisionSummary(d) }),
+    el('button', { class: 'ov-pill-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: (e) => openDetailsSheet(e.currentTarget) }, 'Details'));
+}
+
+function view3d(view, round) {
+  if (view === 'questions') ensureDraft(round);
+  const line = el('div', { class: 'ov-line ov-glass', id: 'ov-line', role: 'status' });
+  const notice = S.closedNotice && (!round || S.closedNotice.roundId === round.id) && view !== 'questions'
+    ? el('div', { class: 'ov-line ov-glass ov-alert' }, icon('info', 16), 'This round closed before your answers were sent.') : null;
+  const err = view === 'questions' && S.submitError ? el('div', { class: 'ov-line ov-glass ov-alert', role: 'alert' }, S.submitError) : null;
+  const top = el('div', { class: 'ov ov-top', id: 'ov-top' }, view === 'decision' && S.decision ? decisionBanner() : null, line, notice, err);
+  const rows = [el('div', { class: 'ov-row' }, stage.modeSeg.node, view === 'questions' || view === 'voted' ? stage.verSeg.node : null)];
+  if (view === 'questions') {
+    rows.push(el('div', { class: 'ov-row ov-actions' },
+      el('button', { class: 'ov-btn', id: 'q-open', type: 'button', 'aria-haspopup': 'dialog', onclick: (e) => openQuestionsList(e.currentTarget) },
+        icon('list', 18), el('span', { text: 'Questions' }), el('span', { class: 'ov-count', id: 'q-count' })),
+      el('button', { class: 'ov-submit', id: 'submit-3d', type: 'button', onclick: submit3d }, 'Submit vote')));
   }
-  updateVoteBar();
+  const bottom = el('div', { class: 'ov ov-bottom', id: 'ov-bottom' }, rows);
+  return [buildStage(), top, bottom];
+}
+
+// Update the status line, Questions count, Submit state and pins in place (no re-mount).
+function refreshOverlays() {
+  if (!use3d() || !STAGE_VIEWS.includes(S.curView)) return;
+  const line = document.getElementById('ov-line');
+  if (line) renderLine(line, lineParts(S.curView, currentRound()));
+  if (S.curView === 'questions' && S.draft) {
+    const params = S.cfg.params;
+    const n = params.filter(isAnswered).length;
+    const count = document.getElementById('q-count');
+    if (count) count.textContent = `${n}/${params.length}`;
+    const qb = document.getElementById('q-open');
+    if (qb) qb.setAttribute('aria-label', `Questions (${n} of ${params.length} set)`);
+    updateVoteBar();
+    if (sheet.kind === 'list') renderQuestionRows();
+  }
   syncStage();
 }
 
+function refreshVoteUI() {
+  if (S.curView !== 'questions' || !S.draft) return;
+  if (use3d()) refreshOverlays();
+}
+
 function updateVoteBar() {
-  const btn = dom.barBtn;
+  const btn = document.getElementById('submit-3d');
+  if (!btn) return;
   btn.textContent = '';
   if (S.submitting) {
     btn.append(icon('loader-circle', 20, 'spin'), 'Sending…');
@@ -905,19 +961,47 @@ function submit3d() {
   const missing = S.cfg.params.find((p) => !isAnswered(p));
   if (missing) {
     S.hint = 'Pick one option to continue.';
-    openSheet(missing.key, dom.barBtn);
+    openQuestionSheet(missing.key, document.getElementById('submit-3d'));
     return;
   }
   closeSheet(false);
   submit();
 }
 
-/* ------------------------------------------------------------------ question sheet */
-const sheet = { root: null, backdrop: null, key: null, opener: null, onKey: null, inertEls: [] };
+// The overlays cover bands of the scene: pins avoid them, tour chips sit above the bottom one,
+// and the camera centres the model between them (or between the top band and an open sheet).
+let ovRO = null;
+let insets = { top: 0, bottom: 0 };
+function watchOverlays() {
+  if (!('ResizeObserver' in window)) { requestAnimationFrame(applyInsets); return; }
+  if (!ovRO) ovRO = new ResizeObserver(() => applyInsets());
+  ovRO.disconnect();
+  for (const id of ['ov-top', 'ov-bottom']) { const n = document.getElementById(id); if (n) ovRO.observe(n); }
+  if (dom.header) ovRO.observe(dom.header);
+  requestAnimationFrame(applyInsets);
+}
+
+function applyInsets() {
+  const viewer = S.v3d.viewer;
+  const top = document.getElementById('ov-top');
+  const bottom = document.getElementById('ov-bottom');
+  if (!viewer || !top || !bottom) return;
+  const h = window.innerHeight;
+  const topPx = Math.max(dom.header ? dom.header.getBoundingClientRect().bottom : 0, top.getBoundingClientRect().bottom);
+  const botPx = Math.max(0, h - bottom.getBoundingClientRect().top);
+  insets = { top: topPx, bottom: botPx };
+  viewer.setOverlayInsets(insets);
+  if (!sheet.root || !sheet.focusModel) viewer.setViewInset(botPx, topPx);
+}
+
+/* ------------------------------------------------------------------ sheets */
+// One bottom sheet at a time: a question, the question list, the (i) info, the decision details or a
+// read-only pin card. Modal: focus is trapped, Escape / Done / the backdrop close it, the page behind
+// is inert, and it scrolls inside itself only.
+const sheet = { root: null, backdrop: null, kind: null, key: null, opener: null, onKey: null, focusModel: false };
 
 function setInert(on) {
-  const els = [document.querySelector('.p-header'), dom.main, dom.bar];
-  for (const n of els) {
+  for (const n of [dom.header, dom.main, dom.bar]) {
     if (!n) continue;
     if (on) { n.inert = true; n.setAttribute('aria-hidden', 'true'); } else { n.inert = false; n.removeAttribute('aria-hidden'); }
   }
@@ -929,40 +1013,36 @@ function sheetFocusables() {
     .filter((n) => !n.disabled && !(n.type === 'radio' && !n.checked && sheet.root.querySelector(`input[name="${CSS.escape(n.name)}"]:checked`)));
 }
 
-function openSheet(key, opener) {
-  const params = S.cfg.params;
-  const p = params.find((x) => x.key === key);
-  if (!p || !S.draft || S.submitting) return;
+function sheetHead(label) {
+  return el('div', { class: 'sheet-head' },
+    el('span', { class: 't-label', text: label || '' }),
+    el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close', onclick: () => closeSheet(true) }, icon('x', 20)));
+}
+
+function doneButton(text = 'Done') {
+  const b = el('button', { class: 'btn btn-ink sheet-done', type: 'button', text });
+  b.addEventListener('click', () => closeSheet(true));
+  return b;
+}
+
+/**
+ * Open a sheet. { kind, key (question it is about, or null), content: [nodes], opener,
+ * focusModel (keep the element in view above the sheet), compact }
+ * The content must contain an element with id "sheet-title".
+ */
+function showSheet({ kind, key = null, content, opener = null, focusModel = false, compact = false, descId = null }) {
   const replacing = !!sheet.root;
   const keepOpener = replacing ? sheet.opener : null;
   if (replacing) closeSheet(false, true);
   S.v3d.sheetKey = key;
-  if (S.v3d.version !== 'yours') { S.v3d.version = 'yours'; if (stage.verSeg) stage.verSeg.sync(); }
-  const i = params.indexOf(p);
-  const opts = { titleId: 'sheet-title', explId: 'sheet-expl', hintId: 'sheet-hint', idPrefix: 'sheet', onChange: refreshVoteUI };
-  const done = el('button', { class: 'btn btn-ink sheet-done', type: 'button', text: 'Done' });
-  done.addEventListener('click', () => closeSheet(true));
-  const hintText = S.hint || '';
   const dlg = el('div', {
-    class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title',
-    'aria-describedby': p.explainer ? 'sheet-expl' : null,
-  },
-  el('div', { class: 'sheet-grab', 'aria-hidden': 'true' }),
-  el('div', { class: 'sheet-head' },
-    el('span', { class: 't-label', text: `Question ${i + 1} of ${params.length}` }),
-    el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close', onclick: () => closeSheet(true) }, icon('x', 20))),
-  el('h2', { class: 'q-title', id: 'sheet-title', tabindex: '-1', text: p.question }),
-  p.explainer ? el('p', { class: 'q-explainer', id: 'sheet-expl', text: p.explainer }) : null,
-  p.type === 'choice' ? choiceControl(p, opts) : sliderControl(p, opts),
-  el('p', { class: 'q-hint' + (hintText ? ' alert' : ''), id: 'sheet-hint', role: 'status', text: hintText }),
-  done);
+    class: 'sheet' + (compact ? ' compact' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title',
+    'aria-describedby': descId, dataset: { kind },
+  }, el('div', { class: 'sheet-grab', 'aria-hidden': 'true' }), content);
   const backdrop = el('div', { class: 'sheet-backdrop', 'aria-hidden': 'true' });
   backdrop.addEventListener('click', () => closeSheet(true));
   document.body.append(backdrop, dlg);
-  sheet.root = dlg;
-  sheet.backdrop = backdrop;
-  sheet.key = key;
-  sheet.opener = keepOpener || opener || null;
+  Object.assign(sheet, { root: dlg, backdrop, kind, key, opener: keepOpener || opener || null, focusModel });
   sheet.onKey = (e) => {
     if (!sheet.root) return;
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSheet(true); return; }
@@ -982,25 +1062,23 @@ function openSheet(key, opener) {
     requestAnimationFrame(() => requestAnimationFrame(() => { dlg.classList.add('open'); backdrop.classList.add('open'); }));
   }
   const title = document.getElementById('sheet-title');
-  try { title.focus({ preventScroll: true }); } catch (_) { title.focus(); }
-  // Keep the element in view: stage at the top of the page, camera turned to it, model centred above the sheet.
-  if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
-  refreshVoteUI();
+  if (title) { try { title.focus({ preventScroll: true }); } catch (_) { title.focus(); } }
+  if (!use3d() && window.scrollY > 0) window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
   const viewer = S.v3d.viewer;
-  if (viewer && stage.root && document.contains(stage.root)) {
-    const r = stage.root.getBoundingClientRect();
-    const stageBottom = r.bottom + window.scrollY; // page coordinates; the page scrolls to the top
-    const overlap = stageBottom - (window.innerHeight - dlg.offsetHeight);
-    viewer.setViewInset(Math.max(0, Math.min(r.height * 0.6, overlap)));
-    viewer.focus(key);
+  if (viewer && use3d() && focusModel) {
+    const overlap = Math.max(0, dlg.offsetHeight);
+    viewer.setViewInset(Math.min(window.innerHeight * 0.62, overlap), insets.top);
+    if (key) viewer.focus(key);
   }
+  refreshOverlays();
+  return dlg;
 }
 
 function closeSheet(returnFocus = true, replacing = false) {
   if (!sheet.root) return;
   const { root, backdrop, opener } = sheet;
   document.removeEventListener('keydown', sheet.onKey, true);
-  sheet.root = null; sheet.backdrop = null; sheet.key = null; sheet.onKey = null;
+  Object.assign(sheet, { root: null, backdrop: null, kind: null, key: null, onKey: null, focusModel: false });
   if (replacing) { root.remove(); backdrop.remove(); return; }
   sheet.opener = null;
   root.classList.remove('open');
@@ -1009,12 +1087,166 @@ function closeSheet(returnFocus = true, replacing = false) {
   S.v3d.sheetKey = null;
   S.hint = '';
   setInert(false);
-  if (S.v3d.viewer) S.v3d.viewer.setViewInset(0);
-  refreshVoteUI();
-  syncStage();
+  if (S.v3d.viewer) S.v3d.viewer.setViewInset(insets.bottom, insets.top);
+  refreshOverlays();
   if (returnFocus && opener && document.contains(opener)) {
     try { opener.focus({ preventScroll: true }); } catch (_) { opener.focus(); }
   }
+}
+
+function openQuestionSheet(key, opener) {
+  const params = S.cfg.params;
+  const p = params.find((x) => x.key === key);
+  if (!p || !S.draft || S.submitting) return;
+  if (S.v3d.version !== 'yours') { S.v3d.version = 'yours'; if (stage.verSeg) stage.verSeg.sync(); }
+  const i = params.indexOf(p);
+  const opts = { titleId: 'sheet-title', explId: 'sheet-expl', hintId: 'sheet-hint', idPrefix: 'sheet', onChange: refreshVoteUI };
+  const hintText = S.hint || '';
+  showSheet({
+    kind: 'question', key, opener, focusModel: true, descId: p.explainer ? 'sheet-expl' : null,
+    content: [
+      sheetHead(`Question ${i + 1} of ${params.length}`),
+      el('h2', { class: 'q-title', id: 'sheet-title', tabindex: '-1', text: p.question }),
+      p.explainer ? el('p', { class: 'q-explainer', id: 'sheet-expl', text: p.explainer }) : null,
+      p.type === 'choice' ? choiceControl(p, opts) : sliderControl(p, opts),
+      el('p', { class: 'q-hint' + (hintText ? ' alert' : ''), id: 'sheet-hint', role: 'status', text: hintText }),
+      doneButton(),
+    ],
+  });
+}
+
+// Fallback to the pins: all questions as rows (a pin can be hidden at some angles).
+function renderQuestionRows() {
+  const list = document.getElementById('sheet-qrows');
+  if (!list || !S.draft) return;
+  const params = S.cfg.params;
+  mount(list, params.map((p, i) => {
+    const set = isAnswered(p);
+    const value = set ? fmtParamValue(p, S.draft.answers[p.key]) : 'Not set yet';
+    return el('li', null, el('button', {
+      class: 'q-row', type: 'button', dataset: { q: p.key, state: set ? 'answered' : 'todo' }, 'aria-haspopup': 'dialog',
+      'aria-label': `Question ${i + 1}, ${p.label}: ${set ? value : 'not set yet'}`,
+      onclick: () => openQuestionSheet(p.key, document.getElementById('q-open')),
+    },
+    el('span', { class: 'q-row-badge' }, set ? icon('check', 18) : String(i + 1)),
+    el('span', { class: 'q-row-text' }, el('span', { class: 'q-row-label', text: p.label }), el('span', { class: 'q-row-value', text: value })),
+    icon('chevron-right', 20)));
+  }));
+}
+
+function openQuestionsList(opener) {
+  if (!S.draft) return;
+  const params = S.cfg.params;
+  const n = params.filter(isAnswered).length;
+  showSheet({
+    kind: 'list', opener,
+    content: [
+      sheetHead(`${n} of ${params.length} set`),
+      el('h2', { class: 'sheet-h2', id: 'sheet-title', tabindex: '-1', text: 'Questions' }),
+      el('p', { class: 'q-explainer', text: 'Each question is also a pin on its element in the model.' }),
+      el('ul', { class: 'q-rows', id: 'sheet-qrows', 'aria-label': 'Questions' }),
+    ],
+  });
+  renderQuestionRows();
+}
+
+function infoSections(prefix) {
+  const b = S.cfg.brief;
+  const p = S.cfg.profile;
+  const rules = b.hard_rules.map((r) => el('li', { text: String(r.plain || r.label || '') }));
+  const goals = b.goals.map((g) => el('li', { text: String(g.plain || g.label || '') }));
+  const margin = toNum(b.close_tradeoff_margin);
+  const closeCall = Number.isFinite(margin) && margin > 0
+    ? ` A goal missed by ${fmtNum(margin)} index points or less is a close call, and close calls go to the room.`
+    : ' Close calls go to the room.';
+  const sections = [
+    el('section', { class: 'notice', 'aria-labelledby': `${prefix}-rules-title` },
+      el('span', { class: 'notice-icon' }, icon('info', 20)),
+      el('h2', { class: 'notice-title t-title', id: `${prefix}-rules-title`, text: 'Rules of the game' }),
+      b.narrative ? el('p', { class: 't-secondary', text: b.narrative }) : null,
+      rules.length ? el('p', null, el('b', { text: 'Hard rules, never broken' })) : null,
+      rules.length ? el('ul', null, rules) : null,
+      goals.length ? el('p', null, el('b', { text: 'Goals of the brief' })) : null,
+      goals.length ? el('ul', null, goals) : null,
+      el('p', { text: 'The reviewer agent decides in a strict order: hard rules first, then the brief’s goals, then your votes. It overrules the room only for a measurable reason, never on taste.' + closeCall }),
+      el('p', { class: 't-secondary', text: 'Metrics are indicative: simple, documented proxies, not simulations.' }),
+    ),
+  ];
+  if (p.privacy_notice) {
+    sections.push(el('div', { class: 'p-divider', 'aria-hidden': 'true' }));
+    sections.push(el('section', { class: 'notice', 'aria-labelledby': `${prefix}-privacy-title` },
+      el('span', { class: 'notice-icon' }, icon('info', 20)),
+      el('h2', { class: 'notice-title t-title', id: `${prefix}-privacy-title`, text: 'Privacy' }),
+      el('p', { text: p.privacy_notice }),
+    ));
+  }
+  return sections;
+}
+
+function openInfoSheet(opener) {
+  showSheet({
+    kind: 'info', opener,
+    content: [
+      sheetHead(S.cfg.profile.session_title || 'Plurarch'),
+      el('h2', { class: 'sr-only', id: 'sheet-title', tabindex: '-1', text: 'Rules of the game and privacy' }),
+      el('div', { class: 'p-info sheet-info' }, infoSections('sh'),
+        el('div', { class: 'p-divider', 'aria-hidden': 'true' }),
+        el('section', { class: 'notice' },
+          el('h2', { class: 'notice-title t-title', text: 'Prefer a list?' }),
+          el('p', { class: 't-secondary', text: 'Answer the questions one per screen, without the 3D model.' }),
+          el('button', { class: 'btn btn-gray sheet-list-btn', type: 'button', onclick: () => setLayoutPref('list') }, icon('list', 18), 'List view'))),
+      doneButton('Close'),
+    ],
+  });
+}
+
+function openDetailsSheet(opener) {
+  if (!S.decision) return;
+  showSheet({
+    kind: 'details', opener,
+    content: [
+      sheetHead('Decision'),
+      el('h2', { class: 'sr-only', id: 'sheet-title', tabindex: '-1', text: 'Decision details' }),
+      decisionCard(S.decision),
+      doneButton('Close'),
+    ],
+  });
+}
+
+// Read-only card for a pin outside voting: the question and the value the model shows.
+function openPinCard(key, opener) {
+  const params = S.cfg.params;
+  const p = params.find((x) => x.key === key);
+  if (!p) return;
+  const i = params.indexOf(p);
+  const view = S.curView;
+  const round = currentRound();
+  const rows = [];
+  let note = null;
+  if (view === 'decision' && S.decision) {
+    const r = decisionRows(S.decision, params).find((x) => x.param.key === key);
+    const v = verdictOf(S.decision);
+    rows.push(['Applied', r ? r.appliedText : fmtParamValue(p, appliedValue(S.decision, p))]);
+    if (r && r.voted !== undefined) rows.push(['Room voted', r.votedText]);
+    if (r && r.changed) note = r.reason || (v && v !== 'REJECTED' ? 'Changed by the reviewer agent.' : 'Not applied.');
+  } else {
+    if (view === 'voted' && round) {
+      const mine = votedAnswers(round.id) || {};
+      if (mine[key] != null) rows.push(['Your vote', fmtParamValue(p, mine[key])]);
+    }
+    rows.push(['Now', fmtParamValue(p, appliedValue(S.decision, p))]);
+    note = view === 'waiting' ? 'You can vote on this when the next round opens.' : null;
+  }
+  showSheet({
+    kind: 'card', key, opener, focusModel: true, compact: true,
+    content: [
+      sheetHead(`${p.label} · question ${i + 1} of ${params.length}`),
+      el('h2', { class: 'sheet-h2', id: 'sheet-title', tabindex: '-1', text: p.question }),
+      el('dl', { class: 'card-values' }, rows.map(([k, v]) => el('div', null, el('dt', { text: `${k}:` }), el('dd', { text: v })))),
+      note ? el('p', { class: 'q-explainer card-note', text: note }) : null,
+      doneButton(),
+    ],
+  });
 }
 
 /* ------------------------------------------------------------------ render */
@@ -1038,47 +1270,56 @@ function renderPills() {
   }
 }
 
+function setLayoutClass(threeD) {
+  document.documentElement.classList.toggle('is-3d', threeD);
+}
+
 function render() {
   if (!S.cfg && !S.configError) { renderPills(); return; }
   renderPills();
   const view = resolveView();
   const round = currentRound();
-  if (wantsStage(view)) ensureViewer(); // may switch to the fallback at once (?v3d=0)
+  if (use3d() && STAGE_VIEWS.includes(view)) ensureViewer(); // may switch to the fallback at once (?v3d=0)
+  const threeD = wantsStage(view);
   const sub = view === 'questions' ? questionsMode() : '';
-  if (sub !== '3d') closeSheet(false);
-  if (view !== 'decision') S.v3d.highlight = null;
+  if (sheet.root && (!threeD || (sheet.kind === 'question' && view !== 'questions') || (sheet.kind === 'list' && view !== 'questions')
+    || (sheet.kind === 'details' && view !== 'decision') || (sheet.kind === 'card' && view !== S.curView))) closeSheet(false);
   S.curView = view;
   const key = JSON.stringify([
-    view, sub, round && round.id, round && round.status, S.decisionId,
+    view, threeD, round && round.id, round && round.status, S.decisionId,
     sub === 'list' && S.draft ? S.draft.step : null,
     S.closedNotice && S.closedNotice.roundId, S.submitting, S.submitError, S.status ? 1 : 0,
     S.v3d.status === 'failed',
   ]);
-  if (view === 'questions') updateBarVisibility(true);
   if (key === S.viewKey) {
-    if (sub === '3d') refreshVoteUI(); else if (view === 'questions') updateBar();
-    syncStage();
+    if (threeD) refreshOverlays(); else if (view === 'questions') updateBar();
     return;
   }
   S.viewKey = key;
 
-  let node;
-  switch (view) {
-    case 'config_error': node = viewConfigError(); break;
-    case 'loading': node = viewLoading(); break;
-    case 'questions': node = viewQuestions(round); break;
-    case 'voted': node = viewVoted(round); break;
-    case 'reviewing': node = viewReviewing(round); break;
-    case 'decision': node = viewDecision(round); break;
-    default: node = viewWaiting();
+  setLayoutClass(threeD);
+  let nodes;
+  if (threeD) nodes = view3d(view, round);
+  else {
+    switch (view) {
+      case 'config_error': nodes = viewConfigError(); break;
+      case 'loading': nodes = viewLoading(); break;
+      case 'questions': nodes = viewQuestions(round); break;
+      case 'voted': nodes = viewVoted(round); break;
+      case 'reviewing': nodes = viewReviewing(round); break;
+      case 'decision': nodes = viewDecision(round); break;
+      default: nodes = viewWaiting();
+    }
   }
-  mount(dom.view, node);
-  updateBarVisibility(view === 'questions');
-  if (sub === '3d') refreshVoteUI(); else if (view === 'questions') updateBar();
-  syncStage();
+  mount(dom.view, nodes);
+  updateBarVisibility(view === 'questions' && !threeD);
+  if (threeD) { refreshOverlays(); watchOverlays(); } else if (view === 'questions') updateBar();
 
   if (view !== S.lastView) {
-    if (view === 'questions' && S.lastView) announce(`${roundName(round && round.number)} is open. ${S.cfg.params.length} questions.`);
+    if (view === 'questions' && S.lastView && S.lastView !== 'loading') {
+      announce(`${roundName(round && round.number)} is open. ${S.cfg.params.length} questions.`);
+      if (threeD) toast('Voting is open');
+    }
     if (view === 'decision' && S.decision) announce(`Decision: ${verdictOf(S.decision) || 'no change'}`);
     if (view === 'reviewing') announce('Voting closed. The reviewer agent is reviewing.');
     S.lastView = view;
@@ -1091,42 +1332,30 @@ function updateBarVisibility(show) {
 }
 
 function renderInfo() {
-  const b = S.cfg.brief;
-  const p = S.cfg.profile;
-  const rules = b.hard_rules.map((r) => el('li', { text: String(r.plain || r.label || '') }));
-  const goals = b.goals.map((g) => el('li', { text: String(g.plain || g.label || '') }));
-  const margin = toNum(b.close_tradeoff_margin);
-  const closeCall = Number.isFinite(margin) && margin > 0
-    ? ` A goal missed by ${fmtNum(margin)} index points or less is a close call, and close calls go to the room.`
-    : ' Close calls go to the room.';
-  const sections = [
-    el('section', { class: 'notice', 'aria-labelledby': 'rules-title' },
-      el('span', { class: 'notice-icon' }, icon('info', 20)),
-      el('h2', { class: 'notice-title t-title', id: 'rules-title', text: 'Rules of the game' }),
-      b.narrative ? el('p', { class: 't-secondary', text: b.narrative }) : null,
-      rules.length ? el('p', null, el('b', { text: 'Hard rules, never broken' })) : null,
-      rules.length ? el('ul', null, rules) : null,
-      goals.length ? el('p', null, el('b', { text: 'Goals of the brief' })) : null,
-      goals.length ? el('ul', null, goals) : null,
-      el('p', { text: 'The reviewer agent decides in a strict order: hard rules first, then the brief’s goals, then your votes. It overrules the room only for a measurable reason, never on taste.' + closeCall }),
-      el('p', { class: 't-secondary', text: 'Metrics are indicative: simple, documented proxies, not simulations.' }),
-    ),
-  ];
-  if (p.privacy_notice) {
-    sections.push(el('div', { class: 'p-divider', 'aria-hidden': 'true' }));
-    sections.push(el('section', { class: 'notice', 'aria-labelledby': 'privacy-title' },
-      el('span', { class: 'notice-icon' }, icon('info', 20)),
-      el('h2', { class: 'notice-title t-title', id: 'privacy-title', text: 'Privacy' }),
-      el('p', { text: p.privacy_notice }),
-    ));
-  }
-  mount(dom.info, el('div', { class: 'p-info' }, sections));
+  mount(dom.info, el('div', { class: 'p-info' }, infoSections('pg')));
 }
 
 /* ------------------------------------------------------------------ boot */
+// In the 3D layout the page never scrolls or zooms: the scene takes every gesture. Safari's own
+// pinch gesture events and stray touchmoves outside scrollable sheets are cancelled as a backstop to
+// touch-action / overscroll-behavior (older iOS versions ignore overscroll-behavior).
+function guardGestures() {
+  const in3d = () => document.documentElement.classList.contains('is-3d');
+  const scrollable = (t) => t && t.closest && t.closest('.sheet, .v3d-stops');
+  for (const type of ['gesturestart', 'gesturechange']) {
+    document.addEventListener(type, (e) => { if (in3d() && !scrollable(e.target)) e.preventDefault(); }, { passive: false });
+  }
+  document.addEventListener('touchmove', (e) => { if (in3d() && !scrollable(e.target)) e.preventDefault(); }, { passive: false });
+}
+
 async function boot() {
   mount(dom.brand, wordmark());
+  if (dom.infoBtn) {
+    mount(dom.infoBtn, icon('info', 20));
+    dom.infoBtn.addEventListener('click', () => { if (S.cfg) openInfoSheet(dom.infoBtn); });
+  }
   loadIcons();
+  guardGestures();
   dom.barBtn.addEventListener('click', goNext);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !sheet.root && !dom.bar.hidden && e.target && e.target.classList && e.target.classList.contains('tile-input')) {
@@ -1165,12 +1394,14 @@ async function boot() {
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('online', () => schedulePoll(200 + Math.random() * 800));
   window.addEventListener('pageshow', (e) => { if (e.persisted) schedulePoll(100 + Math.random() * 500); });
+  window.addEventListener('resize', () => requestAnimationFrame(applyInsets));
   poll();
 }
 
 boot().catch((e) => {
   // Last-resort guard: never leave a blank screen.
   console.error(e);
+  setLayoutClass(false);
   mount(dom.view, el('div', { class: 'p-hero' },
     el('h1', { class: 'p-state-title', text: 'Something went wrong' }),
     el('p', { class: 'p-state-text', text: 'Please reload the page.' })));

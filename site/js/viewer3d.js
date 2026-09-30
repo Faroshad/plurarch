@@ -18,10 +18,11 @@
 //   v.setModel(model, { keepCamera })  // Model per docs/MODEL.md; applied at most once per frame
 //   v.setMode('orbit' | 'tour'); v.getMode(); v.resetView()
 //   v.goToStop(id)
-//   v.setPins([{ question, label, value, state: 'todo'|'answered'|'active'|'changed', num, tag, aria }])
+//   v.setPins([{ question, label, value, state: 'todo'|'answered'|'active'|'changed'|'info', num, tag, aria }])
 //   v.highlight(questionKey | null)    // accent tint + rim on that question's parts, others dimmed
 //   v.focus(questionKey)               // turn the camera toward that question's pin
-//   v.setViewInset(px)                 // bottom overlap (e.g. a sheet): keeps the model centred above it
+//   v.setViewInset(bottomPx, topPx)    // covered bands (a sheet, overlays): keeps the model centred between
+//   v.setOverlayInsets({ top, bottom }) // app overlays: pins avoid these bands; tour stop chips sit above `bottom`
 //   v.setIdleRotation(on)              // slow, bounded turn in orbit mode (waiting screens)
 //   v.stats()                          // numbers for tests: renders, buildMs, tier, frame times, ...
 //   v.dispose()
@@ -174,7 +175,8 @@ export function createViewer(container, options = {}) {
   let tween = null;
   const tour = { eye: null, yaw: 0, pitch: 0, fov: TOUR_FOV, stopId: null, vyaw: 0, vpitch: 0, inertia: false };
   let fovBase = ORBIT_FOV;
-  const inset = { cur: 0, from: 0, to: 0, t0: 0 };
+  const inset = { cur: 0, from: 0, to: 0, t0: 0 }; // signed: bottom band minus top band (px)
+  const safe = { top: 0, bottom: 0 };
   let viewW = 0; let viewH = 0;
   let visible = true;
   let raf = 0; let needFrames = 0; let frameNo = 0; let lastFrameAt = 0; let lastRenderAt = 0;
@@ -681,13 +683,15 @@ export function createViewer(container, options = {}) {
   function computeOrbitHome(keep) {
     const fp = footprint;
     const cx = (fp.min[0] + fp.max[0]) / 2; const cy = (fp.min[1] + fp.max[1]) / 2;
-    const zc = fp.min[2] + (fp.max[2] - fp.min[2]) * 0.82; // well above mid-height: the building sits low, pins fit above
+    // Aim at mid-height and look down about 27 degrees: on a tall phone screen this fills the
+    // height with the building and shows the roof (a question), instead of empty sky above it.
+    const zc = fp.min[2] + (fp.max[2] - fp.min[2]) * 0.32;
     const target = new T.Vector3(cx, zc, -cy);
-    const phi = 1.27; // about 17 degrees above the horizon
+    const phi = 1.1;
     // Three-quarter views from the entrance side; keep the one that shows the most exterior pins.
-    let theta = -0.66; let dist = fitDistance(target, theta, phi, 0.94, ORBIT_FOV); let bestSeen = -1;
+    let theta = -0.66; let dist = fitDistance(target, theta, phi, 1.0, ORBIT_FOV); let bestSeen = -1;
     for (const th of [-0.66, 0.66, -0.95, 0.95, -0.4, 0.4]) {
-      const d = th === -0.66 ? dist : fitDistance(target, th, phi, 0.94, ORBIT_FOV);
+      const d = th === -0.66 ? dist : fitDistance(target, th, phi, 1.0, ORBIT_FOV);
       const seen = visiblePinsFrom(tmpV.setFromSphericalCoords(d, phi, th).add(target));
       if (seen > bestSeen) { bestSeen = seen; theta = th; dist = d; }
     }
@@ -750,9 +754,12 @@ export function createViewer(container, options = {}) {
     const w = viewW || 1; const hgt = viewH || 1;
     camera.aspect = w / hgt;
     const ins = inset.cur;
-    if (ins > 0.5) {
-      camera.fov = 2 * Math.atan(Math.tan((fovBase * DEG) / 2) * ((hgt + ins) / hgt)) / DEG;
-      camera.setViewOffset(w, hgt + ins, 0, ins, w, hgt);
+    if (Math.abs(ins) > 0.5) {
+      // Render a window of a taller virtual image: the principal point moves to the middle of the
+      // uncovered band, and the fov grows with the virtual height so the scale stays the same.
+      const H = hgt + Math.abs(ins);
+      camera.fov = 2 * Math.atan(Math.tan((fovBase * DEG) / 2) * (H / hgt)) / DEG;
+      camera.setViewOffset(w, H, 0, ins > 0 ? ins : 0, w, hgt);
     } else {
       camera.fov = fovBase;
       camera.clearViewOffset();
@@ -1319,7 +1326,7 @@ export function createViewer(container, options = {}) {
   function renderPinContent(rec, item) {
     const c = pinCands.get(rec.q);
     const label = item.label || (c && c.label) || rec.q;
-    const state = ['todo', 'answered', 'active', 'changed'].includes(item.state) ? item.state : 'todo';
+    const state = ['todo', 'answered', 'active', 'changed', 'info'].includes(item.state) ? item.state : 'todo';
     const sig = JSON.stringify([label, item.value, state, item.num, item.tag, item.aria]);
     if (sig === rec.sig) return;
     rec.sig = sig;
@@ -1332,7 +1339,7 @@ export function createViewer(container, options = {}) {
     else rec.badge.textContent = item.num != null ? String(item.num) : '';
     rec.tag.hidden = state !== 'changed';
     rec.tag.textContent = state === 'changed' ? String(item.tag || 'Changed') : '';
-    const stateWord = { todo: 'not set yet', answered: 'set', active: 'open', changed: String(item.tag || 'changed').toLowerCase() }[state];
+    const stateWord = { todo: 'not set yet', answered: 'set', active: 'open', changed: String(item.tag || 'changed').toLowerCase(), info: 'current value' }[state];
     rec.btn.setAttribute('aria-label', item.aria || `${label}: ${item.value || ''}, ${stateWord}`);
     if (state === 'active') rec.btn.setAttribute('aria-expanded', 'true'); else rec.btn.removeAttribute('aria-expanded');
     rec.w = 0;
@@ -1364,8 +1371,8 @@ export function createViewer(container, options = {}) {
     }
     sizesDirty = false;
     const doOcc = occDirty || !moving || frameNo % 4 === 0;
-    const topSafe = Math.max(0, Number(o.insetTop) || 0);
-    const botSafe = mode === 'tour' ? 64 : 0;
+    const topSafe = Math.max(0, Number(o.insetTop) || 0, safe.top);
+    const botSafe = safe.bottom + (mode === 'tour' ? 64 : 0);
     const placed = [];
     for (const rec of pinEls.values()) {
       const c = set ? pinCands.get(rec.q) : null;
@@ -1424,7 +1431,7 @@ export function createViewer(container, options = {}) {
   const SLOTS = [['above', 0], ['above', -1], ['above', 1], ['right', 0], ['left', 0], ['below', 0], ['below', -1], ['below', 1]];
   function layoutPins(placed, topSafe, botSafe) {
     const GAP = 12; const M = 4;
-    const rank = { active: 0, todo: 1, changed: 2, answered: 3 };
+    const rank = { active: 0, todo: 1, changed: 2, answered: 3, info: 3 };
     placed.sort((a, b) => (rank[a.rec.btn.dataset.state] - rank[b.rec.btn.dataset.state]) || (b.y - a.y));
     const boxes = []; const stems = [];
     const dots = placed.map((p) => [p.x - 8, p.y - 8, p.x + 8, p.y + 8, p.rec]);
@@ -1678,10 +1685,18 @@ export function createViewer(container, options = {}) {
       invalidate();
     },
     focus(q) { focusQuestion(q); },
-    setViewInset(px) {
-      const v = Math.max(0, Math.round(Number(px) || 0));
+    setViewInset(bottomPx, topPx = 0) {
+      const v = Math.round(Math.max(0, Number(bottomPx) || 0) - Math.max(0, Number(topPx) || 0));
       if (v === inset.to) return;
       inset.from = inset.cur; inset.to = v; inset.t0 = now();
+      invalidate();
+    },
+    setOverlayInsets({ top = 0, bottom = 0 } = {}) {
+      const t = Math.max(0, Math.round(Number(top) || 0)); const b = Math.max(0, Math.round(Number(bottom) || 0));
+      if (t === safe.top && b === safe.bottom) return;
+      safe.top = t; safe.bottom = b;
+      stopsBar.style.bottom = b + 'px';
+      occDirty = true;
       invalidate();
     },
     setIdleRotation(on) {
@@ -1698,6 +1713,10 @@ export function createViewer(container, options = {}) {
         size: [viewW, viewH], pinsVisible: [...pinEls.values()].filter((r) => r.on).map((r) => r.q),
         idle: idleOn, three: THREE_VERSION, obstacles: obstacles.length / 4,
         eye: camera ? [+camera.position.x.toFixed(2), +(-camera.position.z).toFixed(2), +camera.position.y.toFixed(2)] : null,
+        target: controls ? [+controls.target.x.toFixed(2), +(-controls.target.z).toFixed(2), +controls.target.y.toFixed(2)] : null,
+        dist: camera && controls ? +camera.position.distanceTo(controls.target).toFixed(2) : null,
+        fov: camera ? +fovBase.toFixed(1) : null,
+        dir: camera ? (() => { const d = new T.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); return [+d.x.toFixed(3), +(-d.z).toFixed(3), +d.y.toFixed(3)]; })() : null,
       };
     },
     dispose() { if (!disposed) teardown(); },
