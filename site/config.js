@@ -10,7 +10,7 @@
  */
 window.PLURARCH_CONFIG = {
   backend: "supabase",
-  supabaseUrl: "https://YOUR-PROJECT.supabase.co",
-  supabaseAnonKey: "YOUR-ANON-KEY",
+  supabaseUrl: "https://ifrhsamzievkbebxbqtv.supabase.co",
+  supabaseAnonKey: "sb_publishable_MxTFUF_EEPEfGZCMKho8xA_ZqqFciYk",
   useCase: "live_presentation"
 };
