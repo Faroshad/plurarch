@@ -118,6 +118,20 @@ Design (the contract is `docs/MODEL.md`):
 - **Phones need internet** for the three.js CDN, even in local mode. Without it, they fall back to
   the list view.
 
+## 2026-09-30 (evening): online. Supabase and GitHub Pages are live.
+
+- **Site:** https://faroshad.github.io/plurarch/ (participants) and `…/console.html` (facilitator
+  login: the Supabase user whose email is in `public.facilitators`).
+- **Supabase project** `ifrhsamzievkbebxbqtv`. Schema plus migration 002 applied (the status view is
+  now security invoker).
+- **Tests:** `tests/test_rls.py` 48 passed / 0 failed / 2 skipped (they need the test accounts'
+  passwords). `health-check` (Supabase) all passed, realtime included.
+- **End-to-end over the internet:** a vote from the live site landed in Supabase; the orchestrator
+  (local PC, `backend: supabase`) reviewed it (ACCEPTED, 10 s) and Rhino updated.
+- **Rhino:** `model_builder.py` now reopens the Grasshopper editor (minimised) if someone closes it,
+  because Grasshopper draws no preview with the editor closed.
+- The public QR code is `state/qr_online.png`.
+
 ### Open issues / next steps
 1. **The user tests on real phones in local mode** (same Wi-Fi): scan `state/qr.png`, vote, close
    the round from the console.

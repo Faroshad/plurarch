@@ -1089,9 +1089,24 @@ def _gh_run(path_in, tick_in, scale_in):
     return out["geometry"], out["colors"], out["info"], warning_text
 
 
+def _keep_editor_open():
+    """Grasshopper draws NO preview in Rhino while its editor window is closed, which would blank
+    the projector. If someone closes it, bring it back minimised (the Timer keeps us running)."""
+    try:
+        import Grasshopper
+        import System
+        ed = Grasshopper.Instances.DocumentEditor
+        if ed is not None and not ed.Visible:
+            ed.Show()
+            ed.WindowState = System.Windows.Forms.FormWindowState.Minimized
+    except Exception:
+        pass  # never let a UI nicety break the model
+
+
 def _gh_entry():
     """Grasshopper entry point: wraps everything so the component never turns red."""
     g = globals()
+    _keep_editor_open()
     try:
         return _gh_run(g.get("path"), g.get("tick"), g.get("scale"))
     except Exception as exc:
