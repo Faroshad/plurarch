@@ -692,6 +692,10 @@ function ensureViewer() {
       },
     });
     if (URLQ.get('debug') === '1') window.__plurarch = { S, viewer: v.viewer, render };
+    // orbit only: in the tour a tap walks, and resetView would leave the tour
+    watchDoubleTap(stage.host, () => {
+      if (v.viewer && v.status === 'ready' && v.viewer.getMode() === 'orbit') v.viewer.resetView();
+    });
     v.modelKey = '';
     v.pinsKey = '';
     syncStage();
@@ -1477,10 +1481,52 @@ function renderInfo() {
 function guardGestures() {
   const in3d = () => document.documentElement.classList.contains('is-3d');
   const scrollable = (t) => t && t.closest && t.closest('.sheet, .v3d-stops');
+  const vv = window.visualViewport;
+  // If the browser zoomed the page anyway (double-tap on an old iOS, accessibility zoom), never
+  // block the gesture that would undo it: the guards only apply while the page is at scale 1.
+  const zoomed = () => !!(vv && vv.scale > 1.01);
   for (const type of ['gesturestart', 'gesturechange']) {
-    document.addEventListener(type, (e) => { if (in3d() && !scrollable(e.target)) e.preventDefault(); }, { passive: false });
+    document.addEventListener(type, (e) => { if (in3d() && !scrollable(e.target) && !zoomed()) e.preventDefault(); }, { passive: false });
   }
-  document.addEventListener('touchmove', (e) => { if (in3d() && !scrollable(e.target)) e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', (e) => {
+    if (in3d() && !scrollable(e.target) && !zoomed() && e.touches.length <= 2) e.preventDefault();
+  }, { passive: false });
+  // ...and snap it back: re-applying the viewport meta (maximum-scale=1) makes iOS and Android
+  // return to scale 1, so the overlays, pins and the Submit button are never left off-screen.
+  if (vv) {
+    let timer = 0;
+    vv.addEventListener('resize', () => {
+      if (!zoomed()) return;
+      clearTimeout(timer);
+      timer = setTimeout(resetPageZoom, 250);
+    });
+  }
+}
+
+function resetPageZoom() {
+  const meta = document.getElementById('vp');
+  if (!meta) return;
+  const base = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+  meta.setAttribute('content', base.replace('initial-scale=1', 'initial-scale=1.0'));
+  requestAnimationFrame(() => {
+    meta.setAttribute('content', base);
+    window.scrollTo(0, 0);
+  });
+}
+
+// Double-tap on the 3D model = "reset the view" (a useful action instead of a page zoom).
+function watchDoubleTap(host, onDouble) {
+  let last = 0; let lx = 0; let ly = 0; let downX = 0; let downY = 0;
+  // capture phase: the orbit controls handle (and may stop) these events on the canvas itself
+  host.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; }, { capture: true });
+  host.addEventListener('pointerup', (e) => {
+    if (e.pointerType !== 'touch' || !e.isPrimary) return;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 12) { last = 0; return; } // a drag, not a tap
+    if (e.target && e.target.closest && e.target.closest('button, a, input, .sheet')) return; // pins, controls
+    const t = performance.now();
+    if (t - last < 350 && Math.hypot(e.clientX - lx, e.clientY - ly) < 40) { last = 0; onDouble(); return; }
+    last = t; lx = e.clientX; ly = e.clientY;
+  }, { capture: true });
 }
 
 async function boot() {

@@ -126,6 +126,9 @@ img, svg { display: block; }
 img { max-width: 100%; height: auto; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* No double-tap zoom anywhere on the page: touch-action applies to an element AND all its
+   descendants, so this caps every element at "manipulation" (elements set to none stay none). */
+html { touch-action: manipulation; }
 a { color: inherit; }
 [hidden] { display: none !important; }
 :focus { outline: none; }
