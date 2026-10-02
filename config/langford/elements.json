@@ -1,0 +1,4155 @@
+{
+ "version": 1,
+ "source": {
+  "ifc": "E:\\Academic\\PhD\\Fall 2026\\AI Workshop\\LangfordA_Fresh\\P1_RevitFirst\\04_transfer\\LangfordA_P1_IFC4RV_psets.ifc",
+  "revit": "E:\\Academic\\PhD\\Fall 2026\\AI Workshop\\PlurARCH\\revit\\LangfordA_Plurarch.rvt",
+  "revit_source_p1": "E:\\Academic\\PhD\\Fall 2026\\AI Workshop\\LangfordA_Fresh\\P1_RevitFirst\\03_revit\\LangfordA_P1.rvt",
+  "generated_by": "tools/langford_prep.py",
+  "generated_at": "2026-10-01T22:54:50Z"
+ },
+ "frame": "revit_model_m",
+ "frame_note": "Revit model coordinates in metres: X along the long axis (bearing 50.65 deg, NE), Y toward NW, origin at the S corner of the roof outline, Z = 0 at Level 1 = 101.64 m NAVD88. The IFC and the Rhino render scene use true-north ENU = this frame rotated +39.35 deg about Z at the origin (no translation): E = X cos t - Y sin t, N = X sin t + Y cos t, t = 39.35 deg.",
+ "to_rhino": {
+  "rotate_z_deg": 39.35,
+  "translate": [
+   0,
+   0,
+   0
+  ]
+ },
+ "levels": {
+  "L1 - Lower": 0.0,
+  "L2 - Entry": 4.5,
+  "L3": 8.99,
+  "L4": 13.51,
+  "Roof": 18.26,
+  "T.O. Parapet": 19.48,
+  "L5 - Penthouse Roof": 22.66
+ },
+ "counts": {
+  "revit_panels": 549,
+  "revit_panels_glazed": 535,
+  "revit_panels_solid": 14,
+  "revit_mullions": 1349,
+  "ifc_plates": 527,
+  "se_hosts": 17,
+  "se_ranked_panels": 142,
+  "se_head_slivers": 142,
+  "lanterns": 12,
+  "lantern_glazing_panels": 168,
+  "fin_anchors": 30,
+  "fins_existing_plx": 0,
+  "schedule_check": {
+   "ok": true,
+   "curtain_panel_schedule": {
+    "System Panel: Glazed": 535,
+    "System Panel: Solid": 14
+   }
+  }
+ },
+ "infill_finish": {
+  "solid_panel_type": "System Panel:Solid",
+  "glazed_panel_type": "System Panel:Glazed",
+  "solid_panel_type_id": 62119,
+  "glazed_panel_type_id": 20916,
+  "material_parameter": "Material",
+  "materials": {
+   "concrete": "ARCA Bush-hammered Architectural Concrete",
+   "aluminium": "Aluminum",
+   "fritted_glass": "Glass"
+  },
+  "materials_detail": {
+   "concrete": {
+    "revit_material": "ARCA Bush-hammered Architectural Concrete",
+    "exists_in_p1": true,
+    "note": "P1 material (id 18940, renamed from the template); used by the piers and brackets"
+   },
+   "aluminium": {
+    "revit_material": "Aluminum",
+    "exists_in_p1": true,
+    "note": "template material used by all 1,349 mullions (IFC material 'Aluminum')"
+   },
+   "fritted_glass": {
+    "revit_material": "Glass",
+    "exists_in_p1": true,
+    "note": "P1 has no fritted/frosted glass material; 'Glass' (the glazed panel material) is the best existing one. Check list_materials for 'Glass, Frosted' or similar."
+   }
+  },
+  "as_modelled_material": "Default (none: the 14 penthouse louvre panels have no material)",
+  "default": "concrete",
+  "solid_panels_now": [
+   {
+    "id": 1676114,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676116,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676728,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676730,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676732,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676734,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676736,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676738,
+    "area_m2": 0.48
+   },
+   {
+    "id": 1676740,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676742,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676744,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676746,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676748,
+    "area_m2": 1.44
+   },
+   {
+    "id": 1676750,
+    "area_m2": 0.48
+   }
+  ],
+  "note": "All solid panels share the type, so the finish also applies to the 14 penthouse SE louvre panels (PH-SE-LOU-1/2) and to every SE lite or lantern panel turned solid."
+ },
+ "se_glass_share": {
+  "panels": [
+   {
+    "id": 1676525,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MG0",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     9.95,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 0
+   },
+   {
+    "id": 1676615,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMg",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     54.7,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 1
+   },
+   {
+    "id": 1676555,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNc",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     24.862,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 2
+   },
+   {
+    "id": 1676585,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MN4",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     39.787,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 3
+   },
+   {
+    "id": 1676405,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIO",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     9.95,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 4
+   },
+   {
+    "id": 1676495,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGY",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     54.7,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 5
+   },
+   {
+    "id": 1676435,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MH_",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     24.862,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 6
+   },
+   {
+    "id": 1676465,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHS",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     39.787,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 7
+   },
+   {
+    "id": 1676288,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJj",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     9.95,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 8
+   },
+   {
+    "id": 1676375,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIw",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     54.7,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 9
+   },
+   {
+    "id": 1676345,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJK",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     39.787,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 10
+   },
+   {
+    "id": 1676327,
+    "mark": "SE-L2-W2b",
+    "key": "SE-L2-W2b.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJA",
+    "host_id": 1676051,
+    "area_m2": 2.0953,
+    "level": "L2",
+    "bay": 2,
+    "col": 1,
+    "n_cols": 3,
+    "edge": 0.0,
+    "center": [
+     29.062,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 11
+   },
+   {
+    "id": 1676168,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDb",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     9.95,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 12
+   },
+   {
+    "id": 1676258,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCF",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     54.7,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 13
+   },
+   {
+    "id": 1676198,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDB",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     24.862,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 14
+   },
+   {
+    "id": 1676228,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c5",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCf",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 4,
+    "n_cols": 9,
+    "edge": 0.0,
+    "center": [
+     39.787,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 15
+   },
+   {
+    "id": 1676527,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MG2",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     8.694,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 16
+   },
+   {
+    "id": 1676523,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MG6",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     11.206,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 17
+   },
+   {
+    "id": 1676617,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMa",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     53.444,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 18
+   },
+   {
+    "id": 1676613,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMe",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     55.956,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 19
+   },
+   {
+    "id": 1676557,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNW",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     23.604,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 20
+   },
+   {
+    "id": 1676553,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNa",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     26.121,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 21
+   },
+   {
+    "id": 1676587,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MN6",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     38.529,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 22
+   },
+   {
+    "id": 1676583,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNA",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     41.046,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 23
+   },
+   {
+    "id": 1676407,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIQ",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     8.694,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 24
+   },
+   {
+    "id": 1676403,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIU",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     11.206,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 25
+   },
+   {
+    "id": 1676497,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGy",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     53.444,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 26
+   },
+   {
+    "id": 1676493,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGW",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     55.956,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 27
+   },
+   {
+    "id": 1676437,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHu",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     23.604,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 28
+   },
+   {
+    "id": 1676433,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHy",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     26.121,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 29
+   },
+   {
+    "id": 1676467,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHU",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     38.529,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 30
+   },
+   {
+    "id": 1676463,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MH2",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     41.046,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 31
+   },
+   {
+    "id": 1676290,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJl",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     8.694,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 32
+   },
+   {
+    "id": 1676286,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCJ",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     11.206,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 33
+   },
+   {
+    "id": 1676377,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIq",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     53.444,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 34
+   },
+   {
+    "id": 1676373,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIu",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     55.956,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 35
+   },
+   {
+    "id": 1676347,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJM",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     38.529,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 36
+   },
+   {
+    "id": 1676343,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJQ",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     41.046,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 37
+   },
+   {
+    "id": 1676170,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDd",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     8.694,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 38
+   },
+   {
+    "id": 1676166,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDh",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     11.206,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 39
+   },
+   {
+    "id": 1676260,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MC9",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     53.444,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 40
+   },
+   {
+    "id": 1676256,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCD",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     55.956,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 41
+   },
+   {
+    "id": 1676200,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MD5",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     23.604,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 42
+   },
+   {
+    "id": 1676196,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MD9",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     26.121,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 43
+   },
+   {
+    "id": 1676230,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCh",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 3,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     38.529,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 44
+   },
+   {
+    "id": 1676226,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c6",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCl",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 5,
+    "n_cols": 9,
+    "edge": 0.25,
+    "center": [
+     41.046,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 45
+   },
+   {
+    "id": 1676314,
+    "mark": "SE-L2-W2a",
+    "key": "SE-L2-W2a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJt",
+    "host_id": 1676049,
+    "area_m2": 2.1528,
+    "level": "L2",
+    "bay": 2,
+    "col": 1,
+    "n_cols": 4,
+    "edge": 0.3333,
+    "center": [
+     20.7,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 46
+   },
+   {
+    "id": 1676312,
+    "mark": "SE-L2-W2a",
+    "key": "SE-L2-W2a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJr",
+    "host_id": 1676049,
+    "area_m2": 2.1528,
+    "level": "L2",
+    "bay": 2,
+    "col": 2,
+    "n_cols": 4,
+    "edge": 0.3333,
+    "center": [
+     21.7,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 47
+   },
+   {
+    "id": 1676529,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGS",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     7.439,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 48
+   },
+   {
+    "id": 1676521,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MG4",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     12.461,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 49
+   },
+   {
+    "id": 1676619,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMc",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     52.189,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 50
+   },
+   {
+    "id": 1676611,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMk",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     57.211,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 51
+   },
+   {
+    "id": 1676559,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNY",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     22.346,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 52
+   },
+   {
+    "id": 1676551,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNg",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     27.379,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 53
+   },
+   {
+    "id": 1676589,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MN0",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     37.271,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 54
+   },
+   {
+    "id": 1676581,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MN8",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     42.304,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 55
+   },
+   {
+    "id": 1676409,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIK",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     7.439,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 56
+   },
+   {
+    "id": 1676401,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIS",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     12.461,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 57
+   },
+   {
+    "id": 1676499,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MG_",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     52.189,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 58
+   },
+   {
+    "id": 1676491,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGc",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     57.211,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 59
+   },
+   {
+    "id": 1676439,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHw",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     22.346,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 60
+   },
+   {
+    "id": 1676431,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHY",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     27.379,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 61
+   },
+   {
+    "id": 1676469,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHO",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     37.271,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 62
+   },
+   {
+    "id": 1676461,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MH0",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     42.304,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 63
+   },
+   {
+    "id": 1676292,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJf",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     7.439,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 64
+   },
+   {
+    "id": 1676284,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCH",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     12.461,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 65
+   },
+   {
+    "id": 1676379,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIs",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     52.189,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 66
+   },
+   {
+    "id": 1676371,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MI_",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     57.211,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 67
+   },
+   {
+    "id": 1676349,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJG",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     37.271,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 68
+   },
+   {
+    "id": 1676341,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJO",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     42.304,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 69
+   },
+   {
+    "id": 1676172,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDX",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     7.439,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 70
+   },
+   {
+    "id": 1676164,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDf",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     12.461,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 71
+   },
+   {
+    "id": 1676262,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCB",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     52.189,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 72
+   },
+   {
+    "id": 1676254,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCp",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     57.211,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 73
+   },
+   {
+    "id": 1676202,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MD7",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     22.346,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 74
+   },
+   {
+    "id": 1676194,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDF",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     27.379,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 75
+   },
+   {
+    "id": 1676232,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCb",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 2,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     37.271,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 76
+   },
+   {
+    "id": 1676224,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c7",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCj",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 6,
+    "n_cols": 9,
+    "edge": 0.5,
+    "center": [
+     42.304,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 77
+   },
+   {
+    "id": 1676531,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGU",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     6.183,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 78
+   },
+   {
+    "id": 1676519,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGA",
+    "host_id": 1676065,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 1,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     13.717,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 79
+   },
+   {
+    "id": 1676621,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMW",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     50.933,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 80
+   },
+   {
+    "id": 1676609,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMi",
+    "host_id": 1676071,
+    "area_m2": 2.7413,
+    "level": "L4",
+    "bay": 4,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     58.467,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 81
+   },
+   {
+    "id": 1676561,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNy",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     21.088,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 82
+   },
+   {
+    "id": 1676549,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNe",
+    "host_id": 1676067,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 2,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     28.637,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 83
+   },
+   {
+    "id": 1676591,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MN2",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     36.013,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 84
+   },
+   {
+    "id": 1676579,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNE",
+    "host_id": 1676069,
+    "area_m2": 2.7476,
+    "level": "L4",
+    "bay": 3,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     43.562,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 85
+   },
+   {
+    "id": 1676411,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIM",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     6.183,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 86
+   },
+   {
+    "id": 1676399,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MI2",
+    "host_id": 1676057,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 1,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     13.717,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 87
+   },
+   {
+    "id": 1676501,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGu",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     50.933,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 88
+   },
+   {
+    "id": 1676489,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGa",
+    "host_id": 1676063,
+    "area_m2": 2.7413,
+    "level": "L3",
+    "bay": 4,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     58.467,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 89
+   },
+   {
+    "id": 1676441,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHq",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     21.088,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 90
+   },
+   {
+    "id": 1676429,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHW",
+    "host_id": 1676059,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 2,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     28.637,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 91
+   },
+   {
+    "id": 1676471,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHQ",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     36.013,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 92
+   },
+   {
+    "id": 1676459,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MH6",
+    "host_id": 1676061,
+    "area_m2": 2.7476,
+    "level": "L3",
+    "bay": 3,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     43.562,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 93
+   },
+   {
+    "id": 1676294,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJh",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     6.183,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 94
+   },
+   {
+    "id": 1676282,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCN",
+    "host_id": 1676047,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 1,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     13.717,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 95
+   },
+   {
+    "id": 1676381,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIm",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     50.933,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 96
+   },
+   {
+    "id": 1676369,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIy",
+    "host_id": 1676055,
+    "area_m2": 2.7413,
+    "level": "L2",
+    "bay": 4,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     58.467,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 97
+   },
+   {
+    "id": 1676351,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJI",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     36.013,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 98
+   },
+   {
+    "id": 1676339,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJU",
+    "host_id": 1676053,
+    "area_m2": 2.7476,
+    "level": "L2",
+    "bay": 3,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     43.562,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 99
+   },
+   {
+    "id": 1676174,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDZ",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     6.183,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 100
+   },
+   {
+    "id": 1676162,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDl",
+    "host_id": 1676039,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 1,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     13.717,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 101
+   },
+   {
+    "id": 1676264,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MC5",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     50.933,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 102
+   },
+   {
+    "id": 1676252,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCn",
+    "host_id": 1676045,
+    "area_m2": 2.7413,
+    "level": "L1",
+    "bay": 4,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     58.467,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 103
+   },
+   {
+    "id": 1676204,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MD1",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     21.088,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 104
+   },
+   {
+    "id": 1676192,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDD",
+    "host_id": 1676041,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 2,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     28.637,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 105
+   },
+   {
+    "id": 1676234,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c2",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCd",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 1,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     36.013,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 106
+   },
+   {
+    "id": 1676222,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c8",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDJ",
+    "host_id": 1676043,
+    "area_m2": 2.7476,
+    "level": "L1",
+    "bay": 3,
+    "col": 7,
+    "n_cols": 9,
+    "edge": 0.75,
+    "center": [
+     43.562,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 107
+   },
+   {
+    "id": 1676533,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGO",
+    "host_id": 1676065,
+    "area_m2": 2.6664,
+    "level": "L4",
+    "bay": 1,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     4.944,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 108
+   },
+   {
+    "id": 1676066,
+    "mark": "SE-L4-W1a",
+    "key": "SE-L4-W1a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFF",
+    "host_id": 1676065,
+    "area_m2": 2.6664,
+    "level": "L4",
+    "bay": 1,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     14.956,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 109
+   },
+   {
+    "id": 1676623,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MMY",
+    "host_id": 1676071,
+    "area_m2": 2.6664,
+    "level": "L4",
+    "bay": 4,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     49.694,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 110
+   },
+   {
+    "id": 1676072,
+    "mark": "SE-L4-W4a",
+    "key": "SE-L4-W4a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MF5",
+    "host_id": 1676071,
+    "area_m2": 2.6664,
+    "level": "L4",
+    "bay": 4,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     59.706,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 111
+   },
+   {
+    "id": 1676563,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MN_",
+    "host_id": 1676067,
+    "area_m2": 2.6728,
+    "level": "L4",
+    "bay": 2,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     19.845,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 112
+   },
+   {
+    "id": 1676068,
+    "mark": "SE-L4-W2a",
+    "key": "SE-L4-W2a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MF9",
+    "host_id": 1676067,
+    "area_m2": 2.6728,
+    "level": "L4",
+    "bay": 2,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     29.88,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 113
+   },
+   {
+    "id": 1676593,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MNS",
+    "host_id": 1676069,
+    "area_m2": 2.6728,
+    "level": "L4",
+    "bay": 3,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     34.77,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 114
+   },
+   {
+    "id": 1676070,
+    "mark": "SE-L4-W3a",
+    "key": "SE-L4-W3a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFB",
+    "host_id": 1676069,
+    "area_m2": 2.6728,
+    "level": "L4",
+    "bay": 3,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     44.805,
+     1.913,
+     15.576
+    ],
+    "glazed_now": true,
+    "rank": 115
+   },
+   {
+    "id": 1676413,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIG",
+    "host_id": 1676057,
+    "area_m2": 2.6664,
+    "level": "L3",
+    "bay": 1,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     4.944,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 116
+   },
+   {
+    "id": 1676058,
+    "mark": "SE-L3-W1a",
+    "key": "SE-L3-W1a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFt",
+    "host_id": 1676057,
+    "area_m2": 2.6664,
+    "level": "L3",
+    "bay": 1,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     14.956,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 117
+   },
+   {
+    "id": 1676503,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MGw",
+    "host_id": 1676063,
+    "area_m2": 2.6664,
+    "level": "L3",
+    "bay": 4,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     49.694,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 118
+   },
+   {
+    "id": 1676064,
+    "mark": "SE-L3-W4a",
+    "key": "SE-L3-W4a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFD",
+    "host_id": 1676063,
+    "area_m2": 2.6664,
+    "level": "L3",
+    "bay": 4,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     59.706,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 119
+   },
+   {
+    "id": 1676443,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHs",
+    "host_id": 1676059,
+    "area_m2": 2.6728,
+    "level": "L3",
+    "bay": 2,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     19.845,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 120
+   },
+   {
+    "id": 1676060,
+    "mark": "SE-L3-W2a",
+    "key": "SE-L3-W2a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFn",
+    "host_id": 1676059,
+    "area_m2": 2.6728,
+    "level": "L3",
+    "bay": 2,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     29.88,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 121
+   },
+   {
+    "id": 1676473,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MHK",
+    "host_id": 1676061,
+    "area_m2": 2.6728,
+    "level": "L3",
+    "bay": 3,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     34.77,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 122
+   },
+   {
+    "id": 1676062,
+    "mark": "SE-L3-W3a",
+    "key": "SE-L3-W3a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFp",
+    "host_id": 1676061,
+    "area_m2": 2.6728,
+    "level": "L3",
+    "bay": 3,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     44.805,
+     3.013,
+     10.976
+    ],
+    "glazed_now": true,
+    "rank": 123
+   },
+   {
+    "id": 1676296,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJb",
+    "host_id": 1676047,
+    "area_m2": 2.6664,
+    "level": "L2",
+    "bay": 1,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     4.944,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 124
+   },
+   {
+    "id": 1676048,
+    "mark": "SE-L2-W1a",
+    "key": "SE-L2-W1a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFz",
+    "host_id": 1676047,
+    "area_m2": 2.6664,
+    "level": "L2",
+    "bay": 1,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     14.956,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 125
+   },
+   {
+    "id": 1676383,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIo",
+    "host_id": 1676055,
+    "area_m2": 2.6664,
+    "level": "L2",
+    "bay": 4,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     49.694,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 126
+   },
+   {
+    "id": 1676056,
+    "mark": "SE-L2-W4a",
+    "key": "SE-L2-W4a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFr",
+    "host_id": 1676055,
+    "area_m2": 2.6664,
+    "level": "L2",
+    "bay": 4,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     59.706,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 127
+   },
+   {
+    "id": 1676316,
+    "mark": "SE-L2-W2a",
+    "key": "SE-L2-W2a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJn",
+    "host_id": 1676049,
+    "area_m2": 2.078,
+    "level": "L2",
+    "bay": 2,
+    "col": 0,
+    "n_cols": 4,
+    "edge": 1.0,
+    "center": [
+     19.716,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 128
+   },
+   {
+    "id": 1676050,
+    "mark": "SE-L2-W2a",
+    "key": "SE-L2-W2a.c4",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MF$",
+    "host_id": 1676049,
+    "area_m2": 2.078,
+    "level": "L2",
+    "bay": 2,
+    "col": 3,
+    "n_cols": 4,
+    "edge": 1.0,
+    "center": [
+     22.684,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 129
+   },
+   {
+    "id": 1676353,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MIi",
+    "host_id": 1676053,
+    "area_m2": 2.6728,
+    "level": "L2",
+    "bay": 3,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     34.77,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 130
+   },
+   {
+    "id": 1676054,
+    "mark": "SE-L2-W3a",
+    "key": "SE-L2-W3a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFx",
+    "host_id": 1676053,
+    "area_m2": 2.6728,
+    "level": "L2",
+    "bay": 3,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     44.805,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 131
+   },
+   {
+    "id": 1676329,
+    "mark": "SE-L2-W2b",
+    "key": "SE-L2-W2b.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MJ4",
+    "host_id": 1676051,
+    "area_m2": 2.0204,
+    "level": "L2",
+    "bay": 2,
+    "col": 0,
+    "n_cols": 3,
+    "edge": 1.0,
+    "center": [
+     28.104,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 132
+   },
+   {
+    "id": 1676052,
+    "mark": "SE-L2-W2b",
+    "key": "SE-L2-W2b.c3",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFv",
+    "host_id": 1676051,
+    "area_m2": 2.0204,
+    "level": "L2",
+    "bay": 2,
+    "col": 2,
+    "n_cols": 3,
+    "edge": 1.0,
+    "center": [
+     30.021,
+     4.113,
+     6.756
+    ],
+    "glazed_now": true,
+    "rank": 133
+   },
+   {
+    "id": 1676176,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MDz",
+    "host_id": 1676039,
+    "area_m2": 2.6664,
+    "level": "L1",
+    "bay": 1,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     4.944,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 134
+   },
+   {
+    "id": 1676040,
+    "mark": "SE-L1-W1a",
+    "key": "SE-L1-W1a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFb",
+    "host_id": 1676039,
+    "area_m2": 2.6664,
+    "level": "L1",
+    "bay": 1,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     14.956,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 135
+   },
+   {
+    "id": 1676266,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MC7",
+    "host_id": 1676045,
+    "area_m2": 2.6664,
+    "level": "L1",
+    "bay": 4,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     49.694,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 136
+   },
+   {
+    "id": 1676046,
+    "mark": "SE-L1-W4a",
+    "key": "SE-L1-W4a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFZ",
+    "host_id": 1676045,
+    "area_m2": 2.6664,
+    "level": "L1",
+    "bay": 4,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     59.706,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 137
+   },
+   {
+    "id": 1676206,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MD3",
+    "host_id": 1676041,
+    "area_m2": 2.6728,
+    "level": "L1",
+    "bay": 2,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     19.845,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 138
+   },
+   {
+    "id": 1676042,
+    "mark": "SE-L1-W2a",
+    "key": "SE-L1-W2a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFd",
+    "host_id": 1676041,
+    "area_m2": 2.6728,
+    "level": "L1",
+    "bay": 2,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     29.88,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 139
+   },
+   {
+    "id": 1676236,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c1",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MCX",
+    "host_id": 1676043,
+    "area_m2": 2.6728,
+    "level": "L1",
+    "bay": 3,
+    "col": 0,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     34.77,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 140
+   },
+   {
+    "id": 1676044,
+    "mark": "SE-L1-W3a",
+    "key": "SE-L1-W3a.c9",
+    "global_id": "3qzEuLx8XEiRYp0a4B8MFX",
+    "host_id": 1676043,
+    "area_m2": 2.6728,
+    "level": "L1",
+    "bay": 3,
+    "col": 8,
+    "n_cols": 9,
+    "edge": 1.0,
+    "center": [
+     44.805,
+     3.113,
+     2.166
+    ],
+    "glazed_now": true,
+    "rank": 141
+   }
+  ],
+  "n": 142,
+  "total_area_m2": 382.82,
+  "glazed_now": 142,
+  "default_share": 100,
+  "rule": "glazed = the first round(share/100 * n) panels by rank; the others solid",
+  "ranking": "rank 0 = most valuable. Primary: edge (0 = bay centre, 1 = lite next to a pier/tower), edges go first so each bay keeps a central vision band; then lower floors first (L1, L2, L3, L4); then outer bays first; then x.",
+  "excluded": {
+   "head_slivers": 142,
+   "head_slivers_note": "top-row slivers of each ribbon window (2-163 mm tall, < 0.25 m2): not part of the question",
+   "entrance": "SE-L2-TRANSOM (4 panels) and the doors DR-SE-1..4 stay glazed"
+  }
+ },
+ "skylights_open": {
+  "lanterns": [
+   {
+    "index": 0,
+    "mark": "SKY-01",
+    "glazing_ids": [
+     1676118,
+     1676756,
+     1676758,
+     1676760,
+     1676762,
+     1676764,
+     1676766,
+     1676768,
+     1676769,
+     1676770,
+     1676771,
+     1676772,
+     1676773,
+     1676774
+    ],
+    "glazing_area_m2": 29.734,
+    "glazed_now": true,
+    "glazing_wall_id": 1676117,
+    "glazing_wall_mark": "SKY-01-G",
+    "roof_id": 1674860,
+    "centroid": [
+     11.4,
+     32.7
+    ],
+    "glazing_mid": [
+     12.4,
+     33.75
+    ]
+   },
+   {
+    "index": 1,
+    "mark": "SKY-12",
+    "glazing_ids": [
+     1676140,
+     1677020,
+     1677022,
+     1677024,
+     1677026,
+     1677028,
+     1677030,
+     1677032,
+     1677033,
+     1677034,
+     1677035,
+     1677036,
+     1677037,
+     1677038
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676139,
+    "glazing_wall_mark": "SKY-12-G",
+    "roof_id": 1674948,
+    "centroid": [
+     51.033,
+     26.4
+    ],
+    "glazing_mid": [
+     52.05,
+     27.45
+    ]
+   },
+   {
+    "index": 2,
+    "mark": "SKY-06",
+    "glazing_ids": [
+     1676128,
+     1676876,
+     1676878,
+     1676880,
+     1676882,
+     1676884,
+     1676886,
+     1676888,
+     1676889,
+     1676890,
+     1676891,
+     1676892,
+     1676893,
+     1676894
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676127,
+    "glazing_wall_mark": "SKY-06-G",
+    "roof_id": 1674900,
+    "centroid": [
+     26.133,
+     26.4
+    ],
+    "glazing_mid": [
+     27.15,
+     27.45
+    ]
+   },
+   {
+    "index": 3,
+    "mark": "SKY-07",
+    "glazing_ids": [
+     1676130,
+     1676900,
+     1676902,
+     1676904,
+     1676906,
+     1676908,
+     1676910,
+     1676912,
+     1676913,
+     1676914,
+     1676915,
+     1676916,
+     1676917,
+     1676918
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676129,
+    "glazing_wall_mark": "SKY-07-G",
+    "roof_id": 1674908,
+    "centroid": [
+     36.133,
+     32.7
+    ],
+    "glazing_mid": [
+     37.15,
+     33.75
+    ]
+   },
+   {
+    "index": 4,
+    "mark": "SKY-03",
+    "glazing_ids": [
+     1676122,
+     1676804,
+     1676806,
+     1676808,
+     1676810,
+     1676812,
+     1676814,
+     1676816,
+     1676817,
+     1676818,
+     1676819,
+     1676820,
+     1676821,
+     1676822
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676121,
+    "glazing_wall_mark": "SKY-03-G",
+    "roof_id": 1674876,
+    "centroid": [
+     20.033,
+     32.7
+    ],
+    "glazing_mid": [
+     21.05,
+     33.75
+    ]
+   },
+   {
+    "index": 5,
+    "mark": "SKY-10",
+    "glazing_ids": [
+     1676136,
+     1676972,
+     1676974,
+     1676976,
+     1676978,
+     1676980,
+     1676982,
+     1676984,
+     1676985,
+     1676986,
+     1676987,
+     1676988,
+     1676989,
+     1676990
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676135,
+    "glazing_wall_mark": "SKY-10-G",
+    "roof_id": 1674932,
+    "centroid": [
+     42.233,
+     26.4
+    ],
+    "glazing_mid": [
+     43.25,
+     27.45
+    ]
+   },
+   {
+    "index": 6,
+    "mark": "SKY-02",
+    "glazing_ids": [
+     1676120,
+     1676780,
+     1676782,
+     1676784,
+     1676786,
+     1676788,
+     1676790,
+     1676792,
+     1676793,
+     1676794,
+     1676795,
+     1676796,
+     1676797,
+     1676798
+    ],
+    "glazing_area_m2": 29.734,
+    "glazed_now": true,
+    "glazing_wall_id": 1676119,
+    "glazing_wall_mark": "SKY-02-G",
+    "roof_id": 1674868,
+    "centroid": [
+     11.4,
+     26.4
+    ],
+    "glazing_mid": [
+     12.4,
+     27.45
+    ]
+   },
+   {
+    "index": 7,
+    "mark": "SKY-11",
+    "glazing_ids": [
+     1676138,
+     1676996,
+     1676998,
+     1677000,
+     1677002,
+     1677004,
+     1677006,
+     1677008,
+     1677009,
+     1677010,
+     1677011,
+     1677012,
+     1677013,
+     1677014
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676137,
+    "glazing_wall_mark": "SKY-11-G",
+    "roof_id": 1674940,
+    "centroid": [
+     51.033,
+     32.7
+    ],
+    "glazing_mid": [
+     52.05,
+     33.75
+    ]
+   },
+   {
+    "index": 8,
+    "mark": "SKY-04",
+    "glazing_ids": [
+     1676124,
+     1676828,
+     1676830,
+     1676832,
+     1676834,
+     1676836,
+     1676838,
+     1676840,
+     1676841,
+     1676842,
+     1676843,
+     1676844,
+     1676845,
+     1676846
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676123,
+    "glazing_wall_mark": "SKY-04-G",
+    "roof_id": 1674884,
+    "centroid": [
+     20.033,
+     26.4
+    ],
+    "glazing_mid": [
+     21.05,
+     27.45
+    ]
+   },
+   {
+    "index": 9,
+    "mark": "SKY-09",
+    "glazing_ids": [
+     1676134,
+     1676948,
+     1676950,
+     1676952,
+     1676954,
+     1676956,
+     1676958,
+     1676960,
+     1676961,
+     1676962,
+     1676963,
+     1676964,
+     1676965,
+     1676966
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676133,
+    "glazing_wall_mark": "SKY-09-G",
+    "roof_id": 1674924,
+    "centroid": [
+     42.233,
+     32.7
+    ],
+    "glazing_mid": [
+     43.25,
+     33.75
+    ]
+   },
+   {
+    "index": 10,
+    "mark": "SKY-05",
+    "glazing_ids": [
+     1676126,
+     1676852,
+     1676854,
+     1676856,
+     1676858,
+     1676860,
+     1676862,
+     1676864,
+     1676865,
+     1676866,
+     1676867,
+     1676868,
+     1676869,
+     1676870
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676125,
+    "glazing_wall_mark": "SKY-05-G",
+    "roof_id": 1674892,
+    "centroid": [
+     26.133,
+     32.7
+    ],
+    "glazing_mid": [
+     27.15,
+     33.75
+    ]
+   },
+   {
+    "index": 11,
+    "mark": "SKY-08",
+    "glazing_ids": [
+     1676132,
+     1676924,
+     1676926,
+     1676928,
+     1676930,
+     1676932,
+     1676934,
+     1676936,
+     1676937,
+     1676938,
+     1676939,
+     1676940,
+     1676941,
+     1676942
+    ],
+    "glazing_area_m2": 29.986,
+    "glazed_now": true,
+    "glazing_wall_id": 1676131,
+    "glazing_wall_mark": "SKY-08-G",
+    "roof_id": 1674916,
+    "centroid": [
+     36.133,
+     26.4
+    ],
+    "glazing_mid": [
+     37.15,
+     27.45
+    ]
+   }
+  ],
+  "n": 12,
+  "default_open": 12,
+  "rule": "glazed lanterns = the first n by index; the others get the solid panel type",
+  "ordering": "point-symmetric pairs about the roof centre, chosen greedily (max-min distance) so the open lanterns stay spread over the top-floor studios; one pair per slider step"
+ },
+ "fin_depth": {
+  "anchors": [
+   {
+    "facade": "SE",
+    "host": "SE-L1-W1a",
+    "mullion_line": 3,
+    "base": [
+     8.0667,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 0,
+    "mark": "PLX-FIN-1"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W1a",
+    "mullion_line": 6,
+    "base": [
+     11.8333,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 1,
+    "mark": "PLX-FIN-2"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W2a",
+    "mullion_line": 3,
+    "base": [
+     22.975,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 2,
+    "mark": "PLX-FIN-3"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W2a",
+    "mullion_line": 6,
+    "base": [
+     26.75,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 3,
+    "mark": "PLX-FIN-4"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W3a",
+    "mullion_line": 3,
+    "base": [
+     37.9,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 4,
+    "mark": "PLX-FIN-5"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W3a",
+    "mullion_line": 6,
+    "base": [
+     41.675,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 5,
+    "mark": "PLX-FIN-6"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W4a",
+    "mullion_line": 3,
+    "base": [
+     52.8167,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 6,
+    "mark": "PLX-FIN-7"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L1-W4a",
+    "mullion_line": 6,
+    "base": [
+     56.5833,
+     2.98,
+     0.0
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.45,
+    "level": "L1 - Lower",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     0.95,
+     3.45
+    ],
+    "index": 7,
+    "mark": "PLX-FIN-8"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L2-W1a",
+    "mullion_line": 3,
+    "base": [
+     8.0667,
+     3.98,
+     4.5
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.54,
+    "level": "L2 - Entry",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     5.54,
+     8.04
+    ],
+    "index": 8,
+    "mark": "PLX-FIN-9"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L2-W1a",
+    "mullion_line": 6,
+    "base": [
+     11.8333,
+     3.98,
+     4.5
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.54,
+    "level": "L2 - Entry",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     5.54,
+     8.04
+    ],
+    "index": 9,
+    "mark": "PLX-FIN-10"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L2-W3a",
+    "mullion_line": 3,
+    "base": [
+     37.9,
+     3.98,
+     4.5
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.54,
+    "level": "L2 - Entry",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     5.54,
+     8.04
+    ],
+    "index": 10,
+    "mark": "PLX-FIN-11"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L2-W3a",
+    "mullion_line": 6,
+    "base": [
+     41.675,
+     3.98,
+     4.5
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.54,
+    "level": "L2 - Entry",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     5.54,
+     8.04
+    ],
+    "index": 11,
+    "mark": "PLX-FIN-12"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L2-W4a",
+    "mullion_line": 3,
+    "base": [
+     52.8167,
+     3.98,
+     4.5
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.54,
+    "level": "L2 - Entry",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     5.54,
+     8.04
+    ],
+    "index": 12,
+    "mark": "PLX-FIN-13"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L2-W4a",
+    "mullion_line": 6,
+    "base": [
+     56.5833,
+     3.98,
+     4.5
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.54,
+    "level": "L2 - Entry",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     5.54,
+     8.04
+    ],
+    "index": 13,
+    "mark": "PLX-FIN-14"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W1a",
+    "mullion_line": 3,
+    "base": [
+     8.0667,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 14,
+    "mark": "PLX-FIN-15"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W1a",
+    "mullion_line": 6,
+    "base": [
+     11.8333,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 15,
+    "mark": "PLX-FIN-16"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W2a",
+    "mullion_line": 3,
+    "base": [
+     22.975,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 16,
+    "mark": "PLX-FIN-17"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W2a",
+    "mullion_line": 6,
+    "base": [
+     26.75,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 17,
+    "mark": "PLX-FIN-18"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W3a",
+    "mullion_line": 3,
+    "base": [
+     37.9,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 18,
+    "mark": "PLX-FIN-19"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W3a",
+    "mullion_line": 6,
+    "base": [
+     41.675,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 19,
+    "mark": "PLX-FIN-20"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W4a",
+    "mullion_line": 3,
+    "base": [
+     52.8167,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 20,
+    "mark": "PLX-FIN-21"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L3-W4a",
+    "mullion_line": 6,
+    "base": [
+     56.5833,
+     2.88,
+     8.99
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.4,
+    "level": "L3",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     9.76,
+     12.39
+    ],
+    "index": 21,
+    "mark": "PLX-FIN-22"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W1a",
+    "mullion_line": 3,
+    "base": [
+     8.0667,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 22,
+    "mark": "PLX-FIN-23"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W1a",
+    "mullion_line": 6,
+    "base": [
+     11.8333,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 23,
+    "mark": "PLX-FIN-24"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W2a",
+    "mullion_line": 3,
+    "base": [
+     22.975,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 24,
+    "mark": "PLX-FIN-25"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W2a",
+    "mullion_line": 6,
+    "base": [
+     26.75,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 25,
+    "mark": "PLX-FIN-26"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W3a",
+    "mullion_line": 3,
+    "base": [
+     37.9,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 26,
+    "mark": "PLX-FIN-27"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W3a",
+    "mullion_line": 6,
+    "base": [
+     41.675,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.775,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 27,
+    "mark": "PLX-FIN-28"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W4a",
+    "mullion_line": 3,
+    "base": [
+     52.8167,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 28,
+    "mark": "PLX-FIN-29"
+   },
+   {
+    "facade": "SE",
+    "host": "SE-L4-W4a",
+    "mullion_line": 6,
+    "base": [
+     56.5833,
+     1.78,
+     13.51
+    ],
+    "dir": [
+     0.0,
+     -1.0
+    ],
+    "height_m": 3.51,
+    "level": "L4",
+    "base_offset_m": 0.0,
+    "spacing_m": 3.7667,
+    "window_z": [
+     14.36,
+     17.02
+    ],
+    "index": 29,
+    "mark": "PLX-FIN-30"
+   }
+  ],
+  "n": 30,
+  "wall_type": "ARCA Fin/Curb - Concrete 200",
+  "mark_prefix": "PLX-FIN-",
+  "thickness_m": 0.2,
+  "rule": "for every anchor, a wall from base along dir with length = depth (none when 0)",
+  "placement": "two fins per full SE bay at the third points (mullion lines 3 and 6 of 9; spacing 3.77 m); the piers and corner towers act as the bay-end fins; L2 bay 2 (quad entrance) has none; fins run from the floor to the window head; no SW anchors (no SW glass in the model)",
+  "finned_glazed_area_m2": 368.23
+ },
+ "quantities": {
+  "se_facade_area_m2": 1023.5,
+  "se_facade_note": "SE studio facade between the corner towers (x 4.30-60.35) from L1 to the roof (18.26 m)",
+  "se_glazed_area_m2": 382.82,
+  "se_glazed_area_note": "the ranked lites (the question); the head slivers and the entrance transom/doors stay glazed",
+  "se_glazed_area_finned_bays_m2": 368.23,
+  "se_sliver_area_m2": 12.78,
+  "se_transom_area_m2": 3.91,
+  "se_total_glass_area_m2": 399.52,
+  "sw_glass_area_m2": 0.0,
+  "sw_note": "the P1 model has no SW glazing (SW-PROJ is a blank concrete projection)",
+  "skylight_glazing_area_m2": 359.33,
+  "skylight_glazing_area_per_lantern_m2": 29.944,
+  "solid_panel_area_now_m2": 18.24,
+  "roof_area_m2": 3379.5,
+  "gross_floor_area_m2": 13761.0,
+  "gross_floor_area_note": "slabs L1-L4 + the two penthouse roofs (as penthouse floor proxies)",
+  "storeys": 4,
+  "facade_azimuth_deg": {
+   "SE": 140.65,
+   "NW": 320.65,
+   "NE": 50.65,
+   "SW": 230.65
+  }
+ }
+}

@@ -1,0 +1,25 @@
+{
+  "session_id": "sample-session",
+  "round_id": "sample-round",
+  "round_number": 1,
+  "parameters": { "facade_material": "glass", "window_ratio": 60, "roof_angle": 15, "canopy_depth": 1.5 },
+  "current_parameters": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+  "tally": {
+    "facade_material": { "type": "choice", "n": 40, "winner": "glass",
+      "counts": { "timber": 10, "concrete": 4, "glass": 26 },
+      "percentages": { "timber": 25.0, "concrete": 10.0, "glass": 65.0 },
+      "consensus": 0.65, "consensus_level": "moderate", "leading_options": ["glass"] },
+    "window_ratio": { "type": "slider", "n": 40, "median": 60,
+      "counts": { "20": 0, "25": 0, "30": 1, "35": 1, "40": 3, "45": 3, "50": 6, "55": 8, "60": 18 },
+      "min": 30, "max": 60, "q1": 50, "q3": 60, "consensus": 0.65, "consensus_level": "moderate" },
+    "roof_angle": { "type": "slider", "n": 39, "median": 15,
+      "counts": { "0": 3, "5": 4, "10": 8, "15": 10, "20": 7, "25": 4, "30": 2, "35": 1 },
+      "min": 0, "max": 35, "q1": 10, "q3": 20, "consensus": 0.64, "consensus_level": "moderate" },
+    "canopy_depth": { "type": "slider", "n": 38, "median": 1.5,
+      "counts": { "0": 2, "0.5": 4, "1": 7, "1.5": 11, "2": 8, "2.5": 4, "3": 2 },
+      "min": 0, "max": 3, "q1": 1, "q3": 2, "consensus": 0.68, "consensus_level": "moderate" }
+  },
+  "participation": { "participants": 40, "votes": 157,
+    "by_question": { "facade_material": 40, "window_ratio": 40, "roof_angle": 39, "canopy_depth": 38 } },
+  "previous_decisions": []
+}

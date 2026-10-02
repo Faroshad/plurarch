@@ -15,8 +15,8 @@ sys.path.insert(0, str(REPO))
 
 from mcp import Client, StdioServerParameters  # noqa: E402
 
-P_OK = {"facade_material": "timber", "window_ratio": 45, "roof_angle": 20, "canopy_depth": 2}
-P_TROLL = {"facade_material": "glass", "window_ratio": 60, "roof_angle": 0, "canopy_depth": 0}
+P_OK = {"infill_finish": "concrete", "se_glass_share": 90, "fin_depth": 0.6, "skylights_open": 12}
+P_TROLL = {"infill_finish": "aluminium", "se_glass_share": 40, "fin_depth": 0, "skylights_open": 0}
 
 
 def payload(result):
@@ -38,12 +38,14 @@ class TestDesignMcp(unittest.TestCase):
     async def _run(self):
         with tempfile.TemporaryDirectory() as d:
             env = {**os.environ, "PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "test-round",
-                   "PLURARCH_RUN_ID": "test-run", "PYTHONUTF8": "1"}
+                   "PLURARCH_RUN_ID": "test-run", "PYTHONUTF8": "1",
+                   "PLURARCH_REVIT": "off"}
             params = StdioServerParameters(command=sys.executable, args=[str(REPO / "design_mcp" / "server.py")], env=env)
             async with Client(params) as client:
                 tools = await client.list_tools()
                 names = sorted(t.name for t in tools.tools)
-                self.assertEqual(names, ["evaluate", "get_parameters", "get_project_brief", "get_schema", "set_parameters"])
+                self.assertEqual(names, ["evaluate", "get_parameters", "get_project_brief", "get_revit_state", "get_schema",
+                                         "set_parameters"])
 
                 schema = payload(await client.call_tool("get_schema", {}))
                 self.assertEqual(len(schema["parameters"]), 4)
@@ -55,7 +57,7 @@ class TestDesignMcp(unittest.TestCase):
                 self.assertEqual(ev["evaluate_calls_used"], 1)
 
                 # a malformed call does not use the budget
-                bad = payload(await client.call_tool("evaluate", {"parameters": {"facade_material": "steel"}}))
+                bad = payload(await client.call_tool("evaluate", {"parameters": {"infill_finish": "steel"}}))
                 self.assertFalse(bad["valid"])
                 self.assertEqual(bad["evaluate_calls_used"], 1)
 
@@ -78,7 +80,9 @@ class TestDesignMcp(unittest.TestCase):
                     "parameters": P_OK, "verdict": "ACCEPTED", "rationale": "Passes every rule and goal."}))
                 self.assertTrue(applied["applied"], applied)
                 state = json.loads((Path(d) / "parameters.json").read_text(encoding="utf-8"))
-                self.assertEqual(state["parameters"], {**P_OK, "canopy_depth": 2.0})
+                self.assertEqual(state["parameters"], P_OK)
+                self.assertEqual(applied["revit"]["applied"], False)
+                self.assertIn("disabled", applied["revit"]["skipped"])
                 self.assertEqual(state["round_id"], "test-round")
 
                 again = payload(await client.call_tool("set_parameters", {
@@ -86,7 +90,9 @@ class TestDesignMcp(unittest.TestCase):
                 self.assertEqual(again["error"], "already_applied")
 
                 current = payload(await client.call_tool("get_parameters", {}))
-                self.assertEqual(current["parameters"]["window_ratio"], 45)
+                self.assertEqual(current["parameters"]["se_glass_share"], 90)
+                rs = payload(await client.call_tool("get_revit_state", {}))
+                self.assertFalse(rs["available"])
                 verify = payload(await client.call_tool("evaluate", {"parameters": P_OK}))
                 self.assertTrue(verify["valid"])  # the exempt verification call
                 self.assertFalse(verify["counted"])
@@ -102,7 +108,7 @@ class TestDesignMcp(unittest.TestCase):
 
     async def _run_rejected(self):
         with tempfile.TemporaryDirectory() as d:
-            env = {**os.environ, "PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "r", "PYTHONUTF8": "1"}
+            env = {**os.environ, "PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "r", "PYTHONUTF8": "1", "PLURARCH_REVIT": "off"}
             params = StdioServerParameters(command=sys.executable, args=[str(REPO / "design_mcp" / "server.py")], env=env)
             async with Client(params) as client:
                 for _ in range(5):

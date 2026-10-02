@@ -143,3 +143,81 @@ Design (the contract is `docs/MODEL.md`):
 4. Rehearse on the projector: projection mode, and the Rhino named view "Plurarch".
 5. Still unanswered by the user: session date, participant count, climate and the facilitator email
    (defaults in use).
+
+
+## 2026-10-01: v3, the real building. Langford A, with Revit as the source of truth
+
+The user switched Plurarch from the generated pavilion to the real **Langford Architecture Center,
+Building A** (Texas A&M). The AI now applies voted changes to real Revit elements. The contract is
+`docs/LANGFORD.md`. The pavilion configs, scenarios and metrics are archived in `config/archive_pavilion/`.
+
+### Core (design-mcp, metrics, brief, Revit)
+- **Data:** `tools/langford_prep.py` (C:\Python314, ifcopenshell; reads P1 read-only, 5 s) writes
+  `config/langford/elements.json` and `site/models/langford/base.json` + `base.bin` (0.77 MB:
+  2,125 elements, 29,608 triangles, 323 trees, 17 context buildings; decoded geometry matches the
+  Revit bboxes to 0.6 mm). Counts are checked against the P1 curtain panel schedule (549 = 535
+  glazed + 14 solid).
+- **Questions:** `infill_finish` (concrete / aluminium / fritted glass), `se_glass_share` (40–100 %
+  of 142 SE lites), `fin_depth` (0–1.2 m, 30 fins on the SE glass), `skylights_open` (0–12 lanterns).
+  Defaults are the as-built: concrete / 100 / 0 / 12.
+- **Plan rule** `design_mcp/langford_plan.py` (plan, diff, compare, summarize). Parity with
+  `site/js/model/langford.js` `planLangford()` is checked by `tests/model/test_langford_parity.mjs`
+  against `tests/model/langford_plans.json`: 8 cases, 0 differences.
+- **Metrics** (`design_mcp/metrics.py`): daylight, cooling, cost, carbon and heritage, on the real
+  areas. The fin shading fraction comes from hot-season sun positions for College Station.
+  Indicative proxies only.
+- **Brief:** rules are SE glass ≥ 50 %, and ≥ 80 % glass needs fins ≥ 0.6 m. Goals: daylight ≥ 70,
+  cooling ≤ 68, cost ≤ 90, carbon ≤ 70, heritage ≥ 70, margin 3. Over all 735 designs: 216 pass, 43
+  marginal, 245 fail a goal, 231 break a rule.
+- **As-built premise** (the coordinator decided to keep it): the as-built fails `glass_needs_fins`
+  and cooling (73.0). A vote for it is MODIFIED with the minimum fins. REJECTED may keep the
+  non-compliant as-built; `orchestrator/validate.py` treats that as a warning, not fatal.
+- **Revit:** `design_mcp/revit_client.py` (urllib, 20 s cap per call, token re-read on 401) and
+  `design_mcp/revit_apply.py`. The document guard is checked before the read and again right before
+  the write. The apply is diff-based and idempotent, in one batch. Fin Mark/Comments are set by
+  `import_parameters` in a second small batch. The apply then reads back and verifies, with a 75 s
+  overall deadline.
+- **Server:** `set_parameters` writes the state file, then applies to Revit (best effort, or refuses
+  under `revit_required`). The new read-only tool `get_revit_state` was added. `PLURARCH_REVIT=off` is
+  used by the unit tests, the judgment suite, `test-agent` and the health check.
+- **Orchestrator:**
+  - `DESIGN_TOOLS` has six tools. `get_revit_state` is step 6, and a `revit` event follows
+    `set_parameters`.
+  - The Revit report is stored in `decisions.evidence.revit`. When Revit was not applied,
+    `decisions.message` says "Revit: not applied (…)".
+  - A failed round restores the state file and Revit.
+  - `reset-session` re-applies the as-built to Revit, with the original (no) material.
+  - The simulate profiles are now Langford ones. The health checks use no pavilion keys and include a
+    Revit line.
+- **Tests:** `test_core` (Langford rules, metrics, fixability), `test_tally_validate` (plus the
+  REJECTED-keeps-as-built case), `test_design_mcp` (six tools), `test_langford_plan` (ranking,
+  plan, diff, parity) and `test_revit_apply` (a fake add-in: no write to a wrong document, apply →
+  verify → idempotent → reset, a stray fin, unreachable).
+- **Judgment suite** (one paid run, `--runs 2 --parallel 2`, sonnet, Revit off, 183 s): **21/22 passed**
+  under the old criterion. Consistency was 100 % everywhere except contradicts_earlier_rejection
+  (1 REJECTED, 1 MODIFIED). Every rationale cites real metrics. Findings:
+  - The agent twice applied a MODIFIED design that still FAILS a goal (troll_extreme ×2,
+    contradicts_earlier_rejection ×1: aluminium kept under strong consensus, so heritage stays at
+    45.5–49.9).
+  - Fixes after the run, not yet re-run:
+    - SYSTEM_PROMPT now defines VALID (no failing goal) and says to choose REJECTED when only an
+      unchangeable strong-consensus value still fails.
+    - `validate.py` warns on ACCEPTED/MODIFIED with failing goals.
+    - `run_judgment.py` now counts such runs as failures. Under that stricter criterion this run would
+      score 19/22.
+  - Suggested confirmation: `run_judgment.py --only troll_extreme,contradicts_earlier_rejection --runs 2`.
+- **Live Revit test: PENDING.**
+  - The add-in on 127.0.0.1:7892 never answered between 17:50 and 19:00. Revit was closed most of that
+    time; briefly it showed a window titled "Rook AI", then it exited.
+  - No write and no dry run was ever sent; only health and get_document_info were attempted.
+  - When `revit/LangfordA_Plurarch.rvt` is the active document, run
+    `.venv\Scripts\python.exe tools\revit_live_test.py probe` (then `state`, `dry A`, `apply A`,
+    `apply B`, `apply C`, `image <name>`, `reset`). Or simply:
+    `.venv\Scripts\python.exe -c "from design_mcp import revit_apply as ra; print(ra.apply({...}, dry=True))"`.
+  - Still unverified against the real add-in (the fake add-in test covers the logic):
+    - the response shapes of find_elements with `fields`;
+    - get_element_info on the type 62119 (the `Material` parameter);
+    - change_element_type on curtain panels;
+    - set_parameter Material with `{id: -1}` for the reset;
+    - list_materials, to check that `Aluminum` and `Glass` exist (and whether a frosted-glass material
+      does).

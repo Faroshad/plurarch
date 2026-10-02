@@ -1,6 +1,9 @@
-// Plurarch viewer geometry: turns a pavilion Model (docs/MODEL.md; Z-up, metres) into flat typed
-// arrays, one group per material, in three.js Y-up coordinates. It also builds a compact occluder
-// set for cheap ray tests (pin occlusion, tour taps) in MODEL coordinates.
+// Plurarch viewer geometry: turns a Model (docs/MODEL.md; Z-up, metres) into flat typed arrays, one
+// group per material, in three.js Y-up coordinates. It also builds a compact occluder set for cheap
+// ray tests (pin occlusion, tour taps) in MODEL coordinates.
+// Part types: hexahedron { p: 8 corners }, vertical cylinder { cyl }, and triangle mesh
+// { tri: { pos: Float32Array xyz, idx: Uint16Array | Uint32Array | null } } (flat-shaded; the
+// converted arrays are cached per tri object, so rebuilding a model that reuses its meshes only copies).
 // Pure ES module: no DOM and no three.js, so Node can test and time it.
 //
 // Axis change: model (x, y, z), z up  ->  three (x, z, -y), y up. This is a proper rotation
@@ -9,7 +12,7 @@
 /** Texture tile size in metres per material kind: the procedural texture covers one tile. */
 export const TILE_M = {
   wood: 1.2, concrete: 2.4, stone: 2.4, ground: 4, foliage: 2, fabric: 0.45,
-  plaster: 3, metal: 1.2, paint: 3, glass: 1, light: 1,
+  plaster: 3, metal: 1.2, paint: 3, glass: 1, light: 1, frit: 0.6,
 };
 
 // Hexahedron faces as corner indices (bottom 0-3 CCW from above, top 4-7 above them).
@@ -55,6 +58,56 @@ function isCyl(part) {
   return c[4] > 0 && c[3] !== c[2];
 }
 
+function isTri(part) {
+  const t = part.tri;
+  if (!t || !t.pos || t.pos.length < 9) return false;
+  return t.idx ? t.idx.length >= 3 : true;
+}
+const triCount = (t) => (t.idx ? Math.floor(t.idx.length / 3) : Math.floor(t.pos.length / 9));
+
+// Converted (de-indexed, three.js frame, flat normals, planar metre UVs) arrays per tri object.
+const TRI_CACHE = new WeakMap();
+// Groups made only of tri meshes that are identical to the previous build (same meshes, same order,
+// same tags) are returned as the SAME object, so the viewer can keep their GPU buffers.
+const GROUP_CACHE = new Map();
+const OBJ_ID = new WeakMap();
+let nextObjId = 1;
+const objId = (o) => { let v = OBJ_ID.get(o); if (!v) { v = nextObjId++; OBJ_ID.set(o, v); } return v; };
+function triArrays(tri, tile) {
+  let c = TRI_CACHE.get(tri);
+  if (c && c.tile === tile) return c;
+  const P = tri.pos; const I = tri.idx;
+  const nT = triCount(tri);
+  const pos = new Float32Array(nT * 9); const nrm = new Float32Array(nT * 9); const uv = new Float32Array(nT * 6);
+  const n = [0, 0, 0]; const uA = [0, 0, 0]; const vA = [0, 0, 0];
+  let v = 0;
+  let x0 = Infinity; let y0 = Infinity; let z0 = Infinity; let x1 = -Infinity; let y1 = -Infinity; let z1 = -Infinity;
+  for (let t = 0; t < nT; t++) {
+    const a = (I ? I[t * 3] : t * 3) * 3; const b = (I ? I[t * 3 + 1] : t * 3 + 1) * 3; const cc = (I ? I[t * 3 + 2] : t * 3 + 2) * 3;
+    const ax = P[a]; const ay = P[a + 1]; const az = P[a + 2];
+    const e1x = P[b] - ax; const e1y = P[b + 1] - ay; const e1z = P[b + 2] - az;
+    const e2x = P[cc] - ax; const e2y = P[cc + 1] - ay; const e2z = P[cc + 2] - az;
+    let nx = e1y * e2z - e1z * e2y; let ny = e1z * e2x - e1x * e2z; let nz = e1x * e2y - e1y * e2x;
+    const len = Math.hypot(nx, ny, nz);
+    if (len < 1e-12) continue; // degenerate
+    nx /= len; ny /= len; nz /= len;
+    n[0] = nx; n[1] = ny; n[2] = nz;
+    uvAxes(n, uA, vA);
+    for (const k of [a, b, cc]) {
+      const x = P[k]; const y = P[k + 1]; const z = P[k + 2];
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+      pos[v * 3] = x; pos[v * 3 + 1] = z; pos[v * 3 + 2] = -y;
+      nrm[v * 3] = nx; nrm[v * 3 + 1] = nz; nrm[v * 3 + 2] = -ny;
+      uv[v * 2] = (x * uA[0] + y * uA[1] + z * uA[2]) / tile;
+      uv[v * 2 + 1] = (x * vA[0] + y * vA[1] + z * vA[2]) / tile;
+      v++;
+    }
+  }
+  c = { tile, n: v, pos: pos.subarray(0, v * 3), nrm: nrm.subarray(0, v * 3), uv: uv.subarray(0, v * 2), box: [x0, y0, z0, x1, y1, z1] };
+  TRI_CACHE.set(tri, c);
+  return c;
+}
+
 function segOf(part) {
   const s = Math.round(Number(part.seg) || 12);
   return Math.max(3, Math.min(48, s));
@@ -71,7 +124,7 @@ const isTransparent = (def) => !!def && (def.kind === 'glass' || (Number.isFinit
 
 /**
  * Build typed arrays per material.
- * @param {object} model  pavilion Model
+ * @param {object} model  a Model (docs/MODEL.md)
  * @param {{questionTags?: object, qOf?: Function}} opts
  * @returns {{groups: Array, occ: object, footprint: object, aabb: object, stats: object}}
  */
@@ -96,20 +149,26 @@ export function buildMeshData(model, opts = {}) {
     if (!part || typeof part !== 'object') continue;
     const hex = isHex(part);
     const cyl = !hex && isCyl(part);
-    if (!hex && !cyl) continue;
+    const tri = !hex && !cyl && isTri(part);
+    if (!hex && !cyl && !tri) continue;
     const key = Object.prototype.hasOwnProperty.call(mats, part.m) ? String(part.m) : '__default';
     let g = groups.get(key);
     if (!g) {
-      g = { key, kind: kindOf(mats[key]), maxV: 0, maxI: 0 };
+      g = { key, kind: kindOf(mats[key]), maxV: 0, maxI: 0, allTri: true, sig: 0, nParts: 0 };
       groups.set(key, g);
     }
-    if (hex) { g.maxV += 24; g.maxI += 36; } else {
+    g.nParts++;
+    if (tri) g.sig = (Math.imul(g.sig, 31) + objId(part.tri) * 7 + qOf(part.t)) | 0; else g.allTri = false;
+    if (hex) { g.maxV += 24; g.maxI += 36; } else if (cyl) {
       const s = segOf(part);
       g.maxV += (s + 1) * 4; g.maxI += s * 12;
-    }
-    if (!isTransparent(mats[key])) nOcc++;
+    } else { const nt = triCount(part.tri); g.maxV += nt * 3; g.maxI += nt * 3; }
+    if (!isTransparent(mats[key]) && !part.noOcclude) nOcc++;
   }
   for (const g of groups.values()) {
+    g.tile = TILE_M[g.kind] || 2;
+    const hit = g.allTri ? GROUP_CACHE.get(g.key) : null;
+    if (hit && hit.sig === g.sig && hit.nParts === g.nParts && hit.tile === g.tile) { g.reuse = hit.out; continue; }
     g.pos = new Float32Array(g.maxV * 3);
     g.nrm = new Float32Array(g.maxV * 3);
     g.uv = new Float32Array(g.maxV * 2);
@@ -120,13 +179,15 @@ export function buildMeshData(model, opts = {}) {
     g.tile = TILE_M[g.kind] || 2;
   }
 
-  // Occluders (model coordinates): type 0 = hexahedron (6 planes), 1 = vertical cylinder.
+  // Occluders (model coordinates): type 0 = hexahedron (6 planes), 1 = vertical cylinder,
+  // 2 = triangle mesh (its AABB first, then its triangles, kept in the three.js frame in occ.tri).
   const occ = {
     n: 0,
     type: new Uint8Array(nOcc),
     q: new Uint8Array(nOcc),
     aabb: new Float32Array(nOcc * 6),
     data: new Float32Array(nOcc * 24),
+    tri: new Array(nOcc),
   };
   const fpMin = [Infinity, Infinity, Infinity];
   const fpMax = [-Infinity, -Infinity, -Infinity];
@@ -144,7 +205,8 @@ export function buildMeshData(model, opts = {}) {
     if (!part || typeof part !== 'object') continue;
     const hex = isHex(part);
     const cyl = !hex && isCyl(part);
-    if (!hex && !cyl) continue;
+    const tri = !hex && !cyl && isTri(part);
+    if (!hex && !cyl && !tri) continue;
     const key = Object.prototype.hasOwnProperty.call(mats, part.m) ? String(part.m) : '__default';
     const g = groups.get(key);
     const q = qOf(part.t);
@@ -153,11 +215,42 @@ export function buildMeshData(model, opts = {}) {
     const offV = g.kind === 'wood' ? hash01(pi + 7919) * 3.17 : 0;
     const tag = typeof part.t === 'string' ? part.t : '';
     const inFootprint = !(tag === 'ground' || tag.startsWith('ground:') || tag.startsWith('landscape'));
-    const occluder = !isTransparent(mats[key]);
+    const occluder = !isTransparent(mats[key]) && !part.noOcclude;
     const bmin = [Infinity, Infinity, Infinity];
     const bmax = [-Infinity, -Infinity, -Infinity];
 
-    if (hex) {
+    if (tri && g.reuse) {
+      const c = triArrays(part.tri, tile);
+      tris += c.n / 3;
+      bmin[0] = c.box[0]; bmin[1] = c.box[1]; bmin[2] = c.box[2];
+      bmax[0] = c.box[3]; bmax[1] = c.box[4]; bmax[2] = c.box[5];
+      if (occluder && c.n) {
+        const o = occ.n++;
+        occ.type[o] = 2;
+        occ.q[o] = q;
+        occ.tri[o] = c.pos;
+        setAabb(occ.aabb, o, bmin, bmax);
+      }
+    } else if (tri) {
+      const c = triArrays(part.tri, tile);
+      const base = g.v;
+      g.pos.set(c.pos, base * 3);
+      g.nrm.set(c.nrm, base * 3);
+      g.uv.set(c.uv, base * 2);
+      g.q.fill(q, base, base + c.n);
+      for (let k = 0; k < c.n; k++) g.idx[g.i++] = base + k;
+      g.v += c.n;
+      tris += c.n / 3;
+      bmin[0] = c.box[0]; bmin[1] = c.box[1]; bmin[2] = c.box[2];
+      bmax[0] = c.box[3]; bmax[1] = c.box[4]; bmax[2] = c.box[5];
+      if (occluder && c.n) {
+        const o = occ.n++;
+        occ.type[o] = 2;
+        occ.q[o] = q;
+        occ.tri[o] = c.pos;
+        setAabb(occ.aabb, o, bmin, bmax);
+      }
+    } else if (hex) {
       const p = part.p;
       let cx = 0; let cy = 0; let cz = 0;
       for (let c = 0; c < 8; c++) {
@@ -292,8 +385,9 @@ export function buildMeshData(model, opts = {}) {
 
   const out = [];
   for (const g of groups.values()) {
+    if (g.reuse) { out.push(g.reuse); continue; }
     if (!g.v) continue;
-    out.push({
+    const res = {
       key: g.key,
       kind: g.kind,
       position: g.pos.subarray(0, g.v * 3),
@@ -303,7 +397,9 @@ export function buildMeshData(model, opts = {}) {
       index: g.idx.subarray(0, g.i),
       vertexCount: g.v,
       indexCount: g.i,
-    });
+    };
+    out.push(res);
+    if (g.allTri) GROUP_CACHE.set(g.key, { sig: g.sig, nParts: g.nParts, tile: g.tile, out: res });
   }
   const finite = (a) => a.every(Number.isFinite);
   const aabb = finite(allMin) ? { min: allMin, max: allMax } : { min: [-9, -5, 0], max: [9, 5, 6] };
@@ -331,6 +427,13 @@ function obstaclesOf(parts, model) {
     } else if (isCyl(part)) {
       const [cx, cy, za, zb, r] = part.cyl;
       x0 = cx - r; x1 = cx + r; y0 = cy - r; y1 = cy + r; z0 = Math.min(za, zb); z1 = Math.max(za, zb);
+    } else if (isTri(part)) {
+      const P = part.tri.pos;
+      for (let k = 0; k < P.length; k += 3) {
+        if (P[k] < x0) x0 = P[k]; if (P[k] > x1) x1 = P[k];
+        if (P[k + 1] < y0) y0 = P[k + 1]; if (P[k + 1] > y1) y1 = P[k + 1];
+        if (P[k + 2] < z0) z0 = P[k + 2]; if (P[k + 2] > z1) z1 = P[k + 2];
+      }
     } else continue;
     if (z0 > fz + 1.7 || z1 < fz + 0.05) continue;
     out.push(x0, y0, x1, y1);
@@ -383,7 +486,11 @@ export function rayFirstHit(occ, ox, oy, oz, dx, dy, dz, maxT = Infinity, skipQ 
     if (!(tmax >= Math.max(tmin, 0)) || tmin >= best) continue;
     const d = o * 24;
     let tEnter = 0; let tExit = best;
-    if (occ.type[o] === 0) {
+    if (occ.type[o] === 2) {
+      // the mesh's own triangles (a wall's AABB can cover a whole building); same ray parameter t
+      const P = occ.tri ? occ.tri[o] : null;
+      best = P ? rayTris(P, ox, oz, -oy, dx, dz, -dy, best) : Math.min(best, Math.max(tmin, 0));
+    } else if (occ.type[o] === 0) {
       let hit = true;
       for (let f = 0; f < 6; f++) {
         const nx = D[d + f * 4]; const ny = D[d + f * 4 + 1]; const nz = D[d + f * 4 + 2];
@@ -419,6 +526,29 @@ export function rayFirstHit(occ, ox, oy, oz, dx, dy, dz, maxT = Infinity, skipQ 
     }
   }
   return best < maxT ? best : Infinity;
+}
+
+// Nearest hit t in (0, best) of the ray o + t d with de-indexed triangles P (xyz per vertex), two-sided
+// (Moller-Trumbore). d need not be unit length.
+function rayTris(P, ox, oy, oz, dx, dy, dz, best) {
+  for (let i = 0; i < P.length; i += 9) {
+    const ax = P[i]; const ay = P[i + 1]; const az = P[i + 2];
+    const e1x = P[i + 3] - ax; const e1y = P[i + 4] - ay; const e1z = P[i + 5] - az;
+    const e2x = P[i + 6] - ax; const e2y = P[i + 7] - ay; const e2z = P[i + 8] - az;
+    const px = dy * e2z - dz * e2y; const py = dz * e2x - dx * e2z; const pz = dx * e2y - dy * e2x;
+    const det = e1x * px + e1y * py + e1z * pz;
+    if (det === 0) continue;
+    const inv = 1 / det;
+    const sx = ox - ax; const sy = oy - ay; const sz = oz - az;
+    const u = (sx * px + sy * py + sz * pz) * inv;
+    if (u < 0 || u > 1) continue;
+    const qx = sy * e1z - sz * e1y; const qy = sz * e1x - sx * e1z; const qz = sx * e1y - sy * e1x;
+    const v = (dx * qx + dy * qy + dz * qz) * inv;
+    if (v < 0 || u + v > 1) continue;
+    const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+    if (t > 1e-7 && t < best) best = t;
+  }
+  return best;
 }
 
 function nowMs() {

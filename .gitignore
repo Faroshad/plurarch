@@ -28,3 +28,10 @@ Thumbs.db
 
 # downloaded binaries (not committed)
 tools/bin/
+
+# Langford working copies (large, local only)
+revit/*.rvt
+revit/*backup*
+rhino/*.3dm
+rhino/*.3dmbak
+

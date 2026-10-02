@@ -1,6 +1,7 @@
-"""design-mcp: the only tools the Plurarch reviewer agent can use.
+"""design-mcp: the only tools the Plurarch reviewer agent can use (Langford A, Revit as the source of truth).
 
-Tools: get_schema, get_project_brief, get_parameters, evaluate (side-effect free), set_parameters.
+Tools: get_schema, get_project_brief, get_parameters, evaluate (side-effect free), set_parameters (writes the
+state file, then applies the decision to the real Revit elements), get_revit_state (read-only).
 No delete tools, no code execution, no file access beyond the shared state folder.
 
 Environment (set per run by the orchestrator; every run starts a fresh process, so limits reset):
@@ -8,6 +9,8 @@ Environment (set per run by the orchestrator; every run starts a fresh process, 
     PLURARCH_ROUND_ID      round id written into every log line
     PLURARCH_RUN_ID        unique id of this agent run
     PLURARCH_MAX_EVALUATE  override the brief's max_evaluate_calls (testing only)
+    PLURARCH_REVIT         "off" (tests, judgment suite) | "on" | "required"; default from config/local.json
+                           (revit_apply, default true; revit_required, default false)
 
 Run: <python> design_mcp/server.py   (stdio transport)
 """
@@ -24,12 +27,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from mcp.server.mcpserver import MCPServer  # noqa: E402
 
 from design_mcp import core  # noqa: E402
+from design_mcp import revit_apply  # noqa: E402
 
 SCHEMA = core.load_schema()
 BRIEF = core.load_brief()
 LIMITS = BRIEF.get("agent_limits", {})
 MAX_EVALUATE = int(os.environ.get("PLURARCH_MAX_EVALUATE") or LIMITS.get("max_evaluate_calls", 5))
 VERIFY_EXEMPT = bool(LIMITS.get("verify_evaluate_exempt", True))
+
+
+def _revit_mode() -> str:
+    env = (os.environ.get("PLURARCH_REVIT") or "").strip().lower()
+    if env in ("off", "on", "required"):
+        return env
+    local = core.load_local()
+    if not local.get("revit_apply", True):
+        return "off"
+    return "required" if local.get("revit_required", False) else "on"
+
+
+REVIT_MODE = _revit_mode()
 
 RUN = {
     "run_id": os.environ.get("PLURARCH_RUN_ID") or uuid.uuid4().hex[:12],
@@ -75,9 +92,10 @@ def _phase() -> str:
 server = MCPServer(
     "design",
     instructions=(
-        "Design tools for the Plurarch pavilion. Read the brief, evaluate parameter sets "
-        "(side-effect free, limited per round), then apply one with set_parameters. "
-        "All metrics are indicative proxies."
+        "Design tools for the retrofit of Langford A (Texas A&M), a real building modelled in Revit. Read the "
+        "brief, evaluate parameter sets (side-effect free, limited per round), apply one with set_parameters "
+        "(it also changes the real Revit elements), then verify with get_parameters, evaluate and "
+        "get_revit_state. All metrics are indicative proxies."
     ),
 )
 
@@ -130,8 +148,9 @@ def _is_verification(parameters) -> bool:
 
 
 @server.tool(description=(
-    "Evaluate one complete parameter set WITHOUT changing the model. Returns indicative metrics "
-    "(daylight, cooling, cost, carbon, shading), each hard rule (pass/fail with reason) and each goal "
+    "Evaluate one complete parameter set WITHOUT changing the model. Returns indicative metrics computed "
+    "from the real Revit panel areas (daylight, cooling, cost, carbon, heritage; plus the fin shading "
+    "fraction and the SE and lantern glass areas in m2), each hard rule (pass/fail with reason) and each goal "
     "(pass / marginal / fail against its threshold). Limited to a few calls per round; the response says "
     "how many remain. One extra call after set_parameters is allowed for verification. "
     "parameters must contain every key: " + PARAM_HELP
@@ -165,9 +184,12 @@ def evaluate(parameters: dict[str, Any]) -> dict:
 
 
 @server.tool(description=(
-    "Apply a parameter set to the live model. verdict must be ACCEPTED or MODIFIED (a REJECTED verdict "
-    "keeps the current design: do not call this tool). Every hard rule is re-checked here and anything that "
-    "fails is refused, whatever the verdict says. Can succeed only once per round. rationale: the short "
+    "Apply a parameter set to the live model: the shared state file (phones, stage, Rhino) and then the real "
+    "Revit elements of Langford A (panel types, solid-panel material, PLX-FIN fins). verdict must be ACCEPTED "
+    "or MODIFIED (a REJECTED verdict keeps the current design: do not call this tool). Every hard rule is "
+    "re-checked here and anything that fails is refused, whatever the verdict says. Can succeed only once per "
+    "round. The result includes the Revit report (applied, ops, verified, mismatches, error); if Revit is not "
+    "reachable the design is still applied to the state file and the report says why. rationale: the short "
     "plain-language reason. parameters must contain every key: " + PARAM_HELP
 ))
 def set_parameters(parameters: dict[str, Any], verdict: str, rationale: str) -> dict:
@@ -194,11 +216,26 @@ def set_parameters(parameters: dict[str, Any], verdict: str, rationale: str) -> 
         return refuse("hard_rule_failed", "Refused: " + "; ".join(f"{r['label']}: {r['reason']}" for r in failed),
                       failed_rules=[r["id"] for r in failed])
 
+    if REVIT_MODE == "required":
+        ok, _info, reason = revit_apply.guard(timeout=10)
+        if not ok:
+            return refuse("revit_unavailable", "Refused: Revit is required for this session and " + reason)
+
     before = core.read_state()
     before_metrics = core.evaluate(before["parameters"], SCHEMA, BRIEF).get("metrics")
     path = core.write_state(result["parameters"], round_id=RUN["round_id"], run_id=RUN["run_id"],
                             verdict=verdict, rationale=rationale.strip()[:600])
     RUN["applied"] = True
+    if REVIT_MODE == "off":
+        revit = {"applied": False, "skipped": "Revit is disabled for this run (PLURARCH_REVIT=off)"}
+    else:
+        revit = revit_apply.compact(revit_apply.apply(result["parameters"], label=f"round {RUN['round_id']}"))
+        if REVIT_MODE == "required" and (revit.get("error") or not revit.get("applied")):
+            core.write_state(before["parameters"], verdict=before.get("verdict") or "RESTORED",
+                             round_id=before.get("round_id"))
+            RUN["applied"] = False
+            return refuse("revit_failed", "Refused: Revit is required and the apply failed: "
+                          + str(revit.get("error")), revit=revit)
     out = {
         "applied": True,
         "parameters": result["parameters"],
@@ -206,8 +243,26 @@ def set_parameters(parameters: dict[str, Any], verdict: str, rationale: str) -> 
         "after": {"metrics": result["metrics"]},
         "summary": result["summary"],
         "file": path.name,
+        "revit": revit,
     }
     _log("set_parameters", inputs, out, True, "apply")
+    return out
+
+
+@server.tool(description=(
+    "Read-only: what the real Revit model of Langford A holds now for the voted elements: SE studio panels "
+    "glazed and solid (and the share), roof lanterns open, PLX-FIN fins present with their depth, the solid "
+    "panel material, and whether this matches the applied parameters. Use it in the verify step."
+))
+def get_revit_state() -> dict:
+    state = core.read_state()
+    if REVIT_MODE == "off":
+        out = {"available": False, "reason": "Revit is disabled for this run (PLURARCH_REVIT=off)",
+               "applied_parameters": state["parameters"]}
+    else:
+        out = revit_apply.revit_state_report(state["parameters"])
+    phase = "verify" if (RUN["applied"] or RUN["verify_ready"]) else "explore"
+    _log("get_revit_state", {}, out, bool(out.get("available")), phase)
     return out
 
 

@@ -379,6 +379,10 @@ class SupabaseBackend(Backend):
             row["min"], row["max"], row["step"] = q.get("min"), q.get("max"), q.get("step")
         return row
 
+    def list_active_sessions(self) -> list[dict]:
+        return self._select_all("sessions", {"status": "eq.active", "use_case": "not.in.(rls_test,health_check)",
+                                             "order": "created_at.desc"})
+
     def end_session(self, session_id: str) -> None:
         self._send("PATCH", "/sessions", params={"id": f"eq.{session_id}"},
                    body={"status": "ended"}, prefer="return=minimal")

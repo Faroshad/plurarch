@@ -159,6 +159,38 @@ def diff_params(a: dict, b: dict, schema: dict) -> str:
     return ", ".join(out) or "no change"
 
 
+# --- Revit (the source of truth for Langford A) ----------------------------------------------------
+
+def revit_line(rep: dict) -> str:
+    """One console/agent-event line for a Revit apply report."""
+    if not rep:
+        return "Revit: no report"
+    if rep.get("skipped"):
+        return f"Revit: skipped ({rep['skipped']})"
+    if rep.get("error") and not rep.get("applied"):
+        return f"Revit: not applied ({rep['error']})"
+    ch = rep.get("changes") or {}
+    what = (f"{ch.get('panels_retyped', 0)} panels, {ch.get('fins_created', 0)} fins created, "
+            f"{ch.get('fins_deleted', 0)} removed{', finish' if ch.get('material') else ''}")
+    ver = "verified" if rep.get("verified") else ("NOT verified: " + "; ".join(rep.get("mismatches") or [])[:160])
+    return f"Revit: {rep.get('ops', 0)} ops ({what}), {ver} ({rep.get('s', '?')} s)"
+
+
+def revit_reapply(ctx, params: dict, why: str, original_finish: bool = False) -> dict | None:
+    """Best effort: bring the Revit copy back to `params` (restore after a failed round, reset)."""
+    mode = (os.environ.get("PLURARCH_REVIT") or "").lower()
+    if mode == "off" or not ctx.local.get("revit_apply", True):
+        say(f"  Revit: skipped ({why}; Revit apply is off)", "dim")
+        return None
+    try:
+        from design_mcp import revit_apply
+        rep = revit_apply.compact(revit_apply.apply(params, original_finish=original_finish, label=why))
+    except Exception as e:  # never crash the orchestrator over Revit
+        rep = {"applied": False, "error": f"{type(e).__name__}: {e}"}
+    say("  " + revit_line(rep), "ok" if rep.get("verified") else "warn")
+    return rep
+
+
 # --- agent events ---------------------------------------------------------------------------
 
 class EventForwarder:
@@ -169,6 +201,7 @@ class EventForwarder:
         self.seq = 0
         self.evaluations = 0
         self.applied = False
+        self.revit: dict = {}
 
     def emit(self, step: int, tool: str, summary: str, kind: str = "agent") -> None:
         self.seq += 1
@@ -208,9 +241,21 @@ class EventForwarder:
         elif tool == "set_parameters":
             if out.get("applied"):
                 self.applied = True
+                self.revit = out.get("revit") or {}
                 self.emit(5, tool, f"Applied {inp.get('verdict')}: {short_params(out.get('parameters'), schema)}", "ok")
+                self.emit(5, "revit", revit_line(self.revit), "ok" if self.revit.get("verified") else "warn")
             else:
                 self.emit(5, tool, f"Refused: {out.get('detail') or out.get('error')}", "warn")
+        elif tool == "get_revit_state":
+            if out.get("available"):
+                m = out.get("matches_applied_parameters")
+                self.emit(6, tool, f"Checked Revit: SE glass {out.get('se_panels_glazed')}/{out.get('se_panels_total')}, "
+                                   f"{out.get('lanterns_open')} lanterns open, {out.get('fins')} fins "
+                                   f"{out.get('fin_depths_m')} m, finish {out.get('solid_finish')}"
+                                   + ("" if m is None else (" · matches" if m else " · MISMATCH")),
+                          "agent" if m in (None, True) else "warn")
+            else:
+                self.emit(6, tool, f"Revit not checked: {out.get('reason')}", "warn")
 
 
 # --- processing a round -----------------------------------------------------------------------
@@ -288,6 +333,8 @@ def process_round(ctx: Ctx, session: dict, rnd: dict) -> dict:
         if after_state != before:
             core.write_state(before, ctx.state_dir, verdict="RESTORED", round_id=rnd["id"])
             say("  Restored the previous design", "warn")
+            if fwd.revit.get("applied"):
+                revit_reapply(ctx, before, f"restore after round {rnd['number']}")
         msg = "The reviewer agent could not complete this round (" + "; ".join(fatal)[:300] + \
               "). The design stays as it is."
         say("  FAILED: " + "; ".join(fatal), "err")
@@ -307,6 +354,10 @@ def process_round(ctx: Ctx, session: dict, rnd: dict) -> dict:
                "metrics": {"before": m_before, "proposal": rec["evidence"]["proposal_metrics"],
                            "after": rec["evidence"]["applied_metrics"]},
                "duration_s": res.duration_s}
+        if rec["verdict"] in ("ACCEPTED", "MODIFIED"):
+            row["evidence"] = {**row["evidence"], "revit": fwd.revit or {"applied": False, "error": "no report"}}
+            if not (fwd.revit or {}).get("applied") and not row.get("message"):
+                row["message"] = revit_line(fwd.revit)
         vc = VERDICT_COLORS.get(rec["verdict"], "")
         print(f"\n   {vc} {rec['verdict']} {RESET}  {short_params(applied, ctx.schema)}   "
               f"({res.duration_s} s)\n   {rec['rationale']}\n", flush=True)
@@ -352,9 +403,19 @@ def cmd_run(ctx: Ctx, args) -> None:
     last_tick = 0.0
     count_retry_at = 0.0
     backoff = 1.0
+    no_session_noted = False
     while True:
         try:
-            session = ctx.backend.get_active_session() or ctx.ensure_session()
+            # Sessions are created only at startup and by reset-session, never here (that raced
+            # with reset-session and produced duplicate active sessions).
+            session = ctx.backend.get_active_session()
+            if not session:
+                if not no_session_noted:
+                    say("No active session: waiting (reset-session starts one)", "warn")
+                    no_session_noted = True
+                time.sleep(1.0)
+                continue
+            no_session_noted = False
             rounds = ctx.backend.list_rounds(session["id"])
             for r in rounds:
                 prev = last_seen.get(r["id"])
@@ -441,14 +502,14 @@ def cmd_status(ctx: Ctx, args) -> None:
 
 PROFILES = {
     # weights for the choice question, and (center, spread) for sliders (normal, snapped to the step)
-    "consensus": {"facade_material": {"timber": 0.8, "concrete": 0.1, "glass": 0.1},
-                  "window_ratio": (45, 3), "roof_angle": (20, 3), "canopy_depth": (2.0, 0.3)},
-    "split": {"facade_material": {"concrete": 0.38, "timber": 0.35, "glass": 0.27},
-              "window_ratio": (30, 6), "roof_angle": (33, 4), "canopy_depth": (2.8, 0.5)},
-    "extreme": {"facade_material": {"glass": 0.88, "timber": 0.06, "concrete": 0.06},
-                "window_ratio": (60, 1.5), "roof_angle": (0, 1.5), "canopy_depth": (0, 0.2)},
-    "rule_violating": {"facade_material": {"timber": 0.62, "concrete": 0.28, "glass": 0.10},
-                       "window_ratio": (20, 2), "roof_angle": (15, 3), "canopy_depth": (1.5, 0.3)},
+    "consensus": {"infill_finish": {"concrete": 0.8, "aluminium": 0.1, "fritted_glass": 0.1},
+                  "se_glass_share": (90, 4), "fin_depth": (0.6, 0.1), "skylights_open": (12, 0.8)},
+    "split": {"infill_finish": {"aluminium": 0.38, "concrete": 0.35, "fritted_glass": 0.27},
+              "se_glass_share": (60, 5), "fin_depth": (0, 0.1), "skylights_open": (8, 1)},
+    "extreme": {"infill_finish": {"aluminium": 0.88, "concrete": 0.06, "fritted_glass": 0.06},
+                "se_glass_share": (40, 2), "fin_depth": (0, 0.1), "skylights_open": (0, 0.6)},
+    "rule_violating": {"infill_finish": {"concrete": 0.62, "fritted_glass": 0.28, "aluminium": 0.10},
+                       "se_glass_share": (100, 2), "fin_depth": (0.3, 0.1), "skylights_open": (12, 0.8)},
 }
 
 
@@ -519,7 +580,7 @@ def _check_design_mcp(ctx: Ctx) -> str:
 
     async def go():
         with tempfile.TemporaryDirectory() as d:
-            env = {**os.environ, "PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "health-check", "PYTHONUTF8": "1"}
+            env = {**os.environ, "PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "health-check", "PYTHONUTF8": "1", "PLURARCH_REVIT": "off"}
             params = StdioServerParameters(command=ctx.python, args=[str(REPO / "design_mcp" / "server.py")], env=env)
             async with Client(params) as c:
                 tools = sorted(t.name for t in (await c.list_tools()).tools)
@@ -534,7 +595,8 @@ def _check_claude(ctx: Ctx) -> str:
     with tempfile.TemporaryDirectory() as d:
         cfg = {"mcpServers": {"design": {"type": "stdio", "command": ctx.python,
                                          "args": [str(REPO / "design_mcp" / "server.py")],
-                                         "env": {"PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "health-check"}}}}
+                                         "env": {"PLURARCH_STATE_DIR": d, "PLURARCH_ROUND_ID": "health-check",
+                                                 "PLURARCH_REVIT": "off"}}}}
         mcp_path = Path(d) / "mcp.json"
         mcp_path.write_text(json.dumps(cfg), encoding="utf-8")
         cmd = [ctx.claude, "-p", "--output-format", "json", "--mcp-config", str(mcp_path), "--strict-mcp-config",
@@ -548,7 +610,7 @@ def _check_claude(ctx: Ctx) -> str:
             raise RuntimeError((out.stderr or out.stdout).decode("utf-8", "replace")[:300])
         res = json.loads(out.stdout.decode("utf-8", "replace"))
         text = str(res.get("result", ""))
-        if res.get("is_error") or "window_ratio" not in text:
+        if res.get("is_error") or ctx.schema["parameters"][1]["key"] not in text:
             raise RuntimeError(f"unexpected answer: {text[:200]}")
         return f"{res.get('duration_ms')} ms, answer: {text.strip()[:80]}"
 
@@ -572,6 +634,16 @@ def cmd_health_check(ctx: Ctx, args) -> None:
     results.append(_check("design-mcp responds", lambda: _check_design_mcp(ctx)))
     results.append(_check("headless Claude Code call succeeds", lambda: _check_claude(ctx)))
 
+    def revit_doc():
+        from design_mcp import revit_apply
+        ok, info, reason = revit_apply.guard(timeout=10)
+        if ok:
+            return f"active document {info.get('title')} ({info.get('path')})"
+        if ctx.local.get("revit_required"):
+            raise RuntimeError(reason)
+        return "not ready (best effort, decisions still apply to the phones and Rhino): " + reason
+    results.append(_check("Revit copy is the active document", revit_doc))
+
     if ctx.backend_name == "local":
         def vote_roundtrip():
             from backend_local import LocalBackend
@@ -580,8 +652,9 @@ def cmd_health_check(ctx: Ctx, args) -> None:
                 be = LocalBackend(tmp / "t.db")
                 s = be.create_session("health", ctx.profile["id"], ctx.questions())
                 r = be.open_round(s["id"])
-                be.insert_votes([{"round_id": r["id"], "participant_id": "hc", "question_key": "window_ratio",
-                                  "value": "45"}])
+                sl = next(p for p in ctx.schema["parameters"] if p["type"] == "slider")
+                be.insert_votes([{"round_id": r["id"], "participant_id": "hc", "question_key": sl["key"],
+                                  "value": tally.fmt_num(sl["default"])}])
                 assert len(be.get_votes(r["id"])) == 1
                 return "insert + read back"
             finally:
@@ -626,6 +699,7 @@ def cmd_test_agent(ctx: Ctx, args) -> None:
         model = args.model or ctx.local.get("agent_model") or ctx.profile.get("agent_model", "sonnet")
         res = run_agent(proposal, state_dir=tmp, claude=ctx.claude, python=ctx.python, model=model,
                         timeout_s=float(ctx.profile.get("agent_timeout_s", 120)),
+                        extra_env={"PLURARCH_REVIT": "off"},   # a test: never touch the Revit model
                         on_event=lambda e: say(f"  {e['seq']:>2} {e['tool']:<17} {e.get('phase')} "
                                                f"{(e.get('output') or {}).get('summary', '')}", "agent"))
         if not res.ok:
@@ -656,20 +730,27 @@ def cmd_reset_session(ctx: Ctx, args) -> None:
         if ans.strip().lower() not in ("y", "yes"):
             say("Cancelled", "warn")
             return
-    if s:
+    # Every active (non-test) session, so stray duplicates are cleaned up too.
+    olds = be.list_active_sessions()
+    for old in olds:
         try:
-            r = be.close_round(s["id"])
+            r = be.close_round(old["id"])
             be.mark_round_processed(r["id"])  # closed by the reset, not reviewed
             say(f"Closed round {r['number']}", "ok")
         except BackendError:
             pass
-        n = be.delete_simulated_votes(s["id"])
+        n = be.delete_simulated_votes(old["id"])
         say(f"Deleted {n} simulated votes", "ok")
-        be.end_session(s["id"])
-        say(f"Ended session '{s['title']}'", "ok")
     core.write_state(core.default_parameters(ctx.schema), ctx.state_dir, verdict="DEFAULT")
     say(f"Restored the default design: {short_params(core.default_parameters(ctx.schema), ctx.schema)}", "ok")
-    s2 = ctx.ensure_session(args.title)
+    revit_reapply(ctx, core.default_parameters(ctx.schema), "reset-session (as built)", original_finish=True)
+    # Create the new session BEFORE ending the old ones: there is never a moment without an active
+    # session, so a running orchestrator can never race us into creating a duplicate.
+    s2 = be.create_session(args.title or ctx.profile.get("session_title", "Plurarch session"),
+                           ctx.profile["id"], ctx.questions())
+    for old in olds:
+        be.end_session(old["id"])
+        say(f"Ended session '{old['title']}' ({old['id'][:8]})", "ok")
     say(f"Ready: fresh session '{s2['title']}' with no rounds", "ok")
 
 

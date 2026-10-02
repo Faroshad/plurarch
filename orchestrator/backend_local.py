@@ -133,6 +133,10 @@ class LocalBackend(Backend):
             self._conn.commit()
         return self._one("sessions", "select * from sessions where id=?", (sid,))
 
+    def list_active_sessions(self):
+        return self._rows("sessions", "select * from sessions where status='active' "
+                                      "and use_case not in ('rls_test','health_check') order by created_at desc")
+
     def end_session(self, session_id):
         self._exec("update sessions set status='ended' where id=?", (session_id,))
 

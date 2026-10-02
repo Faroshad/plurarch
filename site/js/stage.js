@@ -253,7 +253,7 @@ function buildJoin(M) {
     verdictBadge(M.lastDecision)) : null;
   const root = el('section', { class: 'screen join' },
     el('div', { class: 'join-text' },
-      el('h1', { class: 'join-title', text: 'Scan to shape the pavilion' }),
+      el('h1', { class: 'join-title', text: 'Scan to reshape Langford A' }),
       el('p', { class: 'join-url' }, breakable(short)),
       note),
     qr,
@@ -568,9 +568,11 @@ function ensureViewer() {
   v.status = 'loading';
   const host = el('div', { class: 'v3d-host' });
   dom.panel3d.appendChild(host);
-  Promise.all([import('./viewer3d.js'), import('./model/pavilion.js')]).then(([vm, pm]) => {
+  // The real building (Langford A): the base geometry is fetched and decoded once, then each
+  // decision only re-assigns materials and adds the fins (js/model/langford.js).
+  Promise.all([import('./viewer3d.js'), import('./model/langford.js').then((pm) => pm.loadLangford().then(() => pm))]).then(([vm, pm]) => {
     if (v.status !== 'loading') return;
-    if (typeof vm.createViewer !== 'function' || typeof pm.buildPavilion !== 'function') throw new Error('viewer API');
+    if (typeof vm.createViewer !== 'function' || typeof pm.buildLangford !== 'function') throw new Error('viewer API');
     v.mod = pm;
     v.viewer = vm.createViewer(host, {
       questionTags: pm.QUESTION_TAGS,
@@ -598,7 +600,7 @@ function sync3d(M) {
   const key = JSON.stringify(params);
   if (key !== v.key) {
     try {
-      v.viewer.setModel(v.mod.buildPavilion(params), { keepCamera: true });
+      v.viewer.setModel(v.mod.buildLangford(params), { keepCamera: true });
       v.key = key;
     } catch (e) {
       fail3d('model');

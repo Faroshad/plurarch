@@ -1,19 +1,24 @@
 {
-  "version": 1,
-  "title": "Plurarch pavilion",
-  "narrative": "A small public pavilion (18 m x 10 m, one room) for talks and exhibitions, in a hot, sunny climate. It should stay comfortable without heavy air-conditioning, feel open and daylit, stay within a modest budget, and keep its embodied carbon low.",
-  "climate": "hot and sunny",
-  "metrics_note": "All metrics are indicative proxies computed from simple, documented formulas (design_mcp/metrics.py). They are not simulations.",
+  "version": 2,
+  "title": "Langford A studio façade retrofit",
+  "building": "Ernest Langford Architecture Center, Building A, Texas A&M University, College Station, Texas",
+  "narrative": "Langford A is an occupied 1970s brutalist architecture school: four floors of design studios in bush-hammered concrete, with a stepped, cantilevered south-east (SE) façade of continuous ribbon windows facing the quad and twelve north-light roof lanterns over the top-floor studios. College Station is hot and humid, and the SE studios overheat on summer mornings. This is a retrofit of the studio façade on the real building: decide how much of the 142-panel SE studio wall stays clear glass, what finish the solid panels get, how deep new concrete sunshade fins on the SE glass should be, and how many roof lanterns stay glazed. The studios need daylight; the retrofit must cut the cooling load, stay within budget, keep embodied carbon low and respect the character of the building.",
+  "as_built": {
+    "parameters": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
+    "note": "The building as it stands (all 142 SE lites clear glass, no fins, all 12 lanterns glazed) is the starting design. It does NOT meet this brief: it fails the rule 'glass_needs_fins' and overheats (cooling 73.0, max 68). That is why the retrofit is needed. A proposal that keeps it unchanged is fixed by adding the minimum fins (MODIFIED). REJECTED keeps it only when no valid modification exists within the limits."
+  },
+  "climate": "hot and humid (College Station, TX, 30.6 N)",
+  "metrics_note": "All metrics are indicative proxies computed from simple, documented formulas on the real panel areas of the Revit model (design_mcp/metrics.py, config/langford/elements.json). They are not simulations.",
 
   "goals": [
     {
       "id": "daylight",
       "metric": "daylight",
-      "label": "Daylight",
+      "label": "Studio daylight",
       "unit": "index",
       "direction": "min",
-      "threshold": 50,
-      "plain": "The room must get enough daylight (daylight index at least 50)."
+      "threshold": 70,
+      "plain": "The studios must stay well daylit (studio daylight index at least 70)."
     },
     {
       "id": "cooling",
@@ -21,17 +26,17 @@
       "label": "Cooling load",
       "unit": "index",
       "direction": "max",
-      "threshold": 62,
-      "plain": "The building must not overheat (cooling index at most 62)."
+      "threshold": 68,
+      "plain": "The studios must not overheat (cooling index at most 68; the building as it stands is at 73.0)."
     },
     {
       "id": "cost",
       "metric": "cost",
-      "label": "Cost",
+      "label": "Retrofit cost",
       "unit": "index",
       "direction": "max",
-      "threshold": 100,
-      "plain": "It must stay within budget (cost index at most 100)."
+      "threshold": 90,
+      "plain": "The retrofit must stay within budget (cost index at most 90)."
     },
     {
       "id": "carbon",
@@ -39,8 +44,17 @@
       "label": "Embodied carbon",
       "unit": "index",
       "direction": "max",
-      "threshold": 90,
-      "plain": "Embodied carbon must stay low (carbon index at most 90)."
+      "threshold": 70,
+      "plain": "The retrofit's embodied carbon must stay low (carbon index at most 70)."
+    },
+    {
+      "id": "heritage",
+      "metric": "heritage",
+      "label": "Heritage fit",
+      "unit": "index",
+      "direction": "min",
+      "threshold": 70,
+      "plain": "The retrofit must respect the 1970s concrete building (heritage-fit index at least 70). Aluminium panels are foreign to it."
     }
   ],
 
@@ -49,21 +63,20 @@
 
   "hard_rules": [
     {
-      "id": "min_window_ratio",
-      "label": "Window ratio at least 25%",
-      "plain": "Windows must cover at least 25% of the wall, for minimum daylight.",
+      "id": "min_se_glass",
+      "label": "SE studio glass at least 50%",
+      "plain": "At least half of the SE studio window panels must stay clear glass, for studio daylight and views.",
       "if": [],
-      "then": { "param": "window_ratio", "op": ">=", "value": 25 }
+      "then": { "param": "se_glass_share", "op": ">=", "value": 50 }
     },
     {
-      "id": "glass_needs_shading",
-      "label": "Glass façade with 50%+ windows needs shading",
-      "plain": "In this hot climate, a glass façade with 50% or more windows needs real shading: a shading fraction of at least 0.35 from the roof overhang and the canopy.",
+      "id": "glass_needs_fins",
+      "label": "80%+ SE glass needs fins of at least 0.6 m",
+      "plain": "In College Station's climate, an SE studio wall with 80% or more clear glass needs sunshade fins at least 0.6 m deep.",
       "if": [
-        { "param": "facade_material", "op": "==", "value": "glass" },
-        { "param": "window_ratio", "op": ">=", "value": 50 }
+        { "param": "se_glass_share", "op": ">=", "value": 80 }
       ],
-      "then": { "metric": "shading", "op": ">=", "value": 0.35 }
+      "then": { "param": "fin_depth", "op": ">=", "value": 0.6 }
     }
   ],
 

@@ -25,6 +25,9 @@ from urllib.parse import urlparse
 
 from backend_supabase import SupabaseBackend, anon_request
 
+_slider: dict = {}
+_slider_value = ""
+
 TEST_USE_CASE = "health_check"
 
 
@@ -103,6 +106,9 @@ class MiniWebSocket:
 # --- checks -----------------------------------------------------------------------------------
 
 def run_all(ctx, check, env: dict) -> list[bool]:
+    global _slider, _slider_value
+    _slider = next(p for p in ctx.schema["parameters"] if p["type"] == "slider")
+    _slider_value = str(int(_slider["default"]) if float(_slider["default"]).is_integer() else _slider["default"])
     url, anon_key, service_key = env.get("SUPABASE_URL"), env.get("SUPABASE_ANON_KEY"), env.get("SUPABASE_SERVICE_ROLE_KEY")
     results = []
     if not anon_key:
@@ -154,8 +160,8 @@ def run_all(ctx, check, env: dict) -> list[bool]:
                 raise RuntimeError("realtime join timed out")
             pid = f"health-{uuid.uuid4().hex[:10]}"
             resp = anon_request(url, anon_key, "POST", "votes", prefer="return=minimal",
-                                json=[{"round_id": rid, "participant_id": pid, "question_key": "window_ratio",
-                                       "value": "45"}])
+                                json=[{"round_id": rid, "participant_id": pid, "question_key": _slider["key"],
+                                       "value": _slider_value}])
             if resp.status_code >= 300:
                 raise RuntimeError(f"anon vote insert failed: HTTP {resp.status_code} {resp.text[:200]}")
             stored = [v for v in be.get_votes(rid) if v["participant_id"] == pid]

@@ -1,8 +1,8 @@
-"""Unit tests for the deterministic core: validation, hard rules, goals, snapping, state file.
+"""Unit tests for the deterministic core (Langford A): validation, metrics, hard rules, goals, snapping, state file.
 
     .venv\\Scripts\\python.exe -m unittest discover -s tests -v
 """
-import json
+import itertools
 import sys
 import tempfile
 import unittest
@@ -10,87 +10,140 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from design_mcp import core  # noqa: E402
+from design_mcp import core, metrics  # noqa: E402
 
 
-def P(material, window, roof, canopy):
-    return {"facade_material": material, "window_ratio": window, "roof_angle": roof, "canopy_depth": canopy}
+def P(finish, share, fins, lanterns):
+    return {"infill_finish": finish, "se_glass_share": share, "fin_depth": fins, "skylights_open": lanterns}
+
+
+AS_BUILT = P("concrete", 100, 0, 12)
 
 
 class TestValidation(unittest.TestCase):
     def test_valid(self):
-        norm, errors = core.validate_parameters(P("timber", 40, 15, 1.5))
+        norm, errors = core.validate_parameters(P("concrete", 90, 0.6, 12))
         self.assertEqual(errors, [])
-        self.assertEqual(norm, P("timber", 40, 15, 1.5))
+        self.assertEqual(norm, P("concrete", 90, 0.6, 12))
 
     def test_numbers_as_strings_and_floats_are_normalised(self):
-        norm, errors = core.validate_parameters(P("glass", "45", 20.0, "2"))
+        norm, errors = core.validate_parameters(P("aluminium", "70", 0.9, "8"))
         self.assertEqual(errors, [])
-        self.assertEqual(norm, P("glass", 45, 20, 2.0))
-        self.assertIsInstance(norm["window_ratio"], int)
+        self.assertEqual(norm, P("aluminium", 70, 0.9, 8))
+        self.assertIsInstance(norm["se_glass_share"], int)
+        self.assertIsInstance(norm["skylights_open"], int)
 
     def test_rejects_bad_values(self):
-        for bad in (P("steel", 40, 15, 1.5), P("timber", 42, 15, 1.5), P("timber", 65, 15, 1.5),
-                    P("timber", 40, 15, 1.25), P("timber", True, 15, 1.5), P("timber", "abc", 15, 1.5)):
+        for bad in (P("timber", 90, 0.6, 12), P("concrete", 95, 0.6, 12), P("concrete", 30, 0.6, 12),
+                    P("concrete", 90, 0.5, 12), P("concrete", 90, 1.5, 12), P("concrete", 90, 0.6, 7),
+                    P("concrete", True, 0.6, 12), P("concrete", "abc", 0.6, 12)):
             norm, errors = core.validate_parameters(bad)
             self.assertIsNone(norm, bad)
             self.assertTrue(errors, bad)
 
     def test_rejects_missing_and_extra_keys(self):
-        _, errors = core.validate_parameters({"facade_material": "timber"})
+        _, errors = core.validate_parameters({"infill_finish": "concrete"})
         self.assertTrue(any("missing" in e for e in errors))
-        _, errors = core.validate_parameters({**P("timber", 40, 15, 1.5), "height": 9})
+        _, errors = core.validate_parameters({**AS_BUILT, "height": 9})
         self.assertTrue(any("unknown" in e for e in errors))
 
     def test_snap(self):
-        self.assertEqual(core.snap_to_step("window_ratio", 42.5), 45)  # ties go up
-        self.assertEqual(core.snap_to_step("window_ratio", 42.4), 40)
-        self.assertEqual(core.snap_to_step("canopy_depth", 1.26), 1.5)
-        self.assertEqual(core.snap_to_step("roof_angle", 37), 35)       # clamped
-        self.assertEqual(core.snap_to_step("window_ratio", 3), 20)      # clamped
+        self.assertEqual(core.snap_to_step("se_glass_share", 85), 90)    # ties go up
+        self.assertEqual(core.snap_to_step("se_glass_share", 84.9), 80)
+        self.assertEqual(core.snap_to_step("fin_depth", 0.45), 0.6)
+        self.assertEqual(core.snap_to_step("fin_depth", 0.44), 0.3)
+        self.assertEqual(core.snap_to_step("skylights_open", 13), 12)    # clamped
+        self.assertEqual(core.snap_to_step("se_glass_share", 3), 40)     # clamped
+
+    def test_defaults_are_the_as_built(self):
+        self.assertEqual(core.default_parameters(), AS_BUILT)
+        self.assertEqual(core.load_brief()["as_built"]["parameters"], AS_BUILT)
+
+
+class TestMetrics(unittest.TestCase):
+    """Sanity of the Langford proxies (design_mcp/metrics.py): directions and the real areas."""
+
+    def m(self, *a):
+        return metrics.compute_metrics(P(*a))
+
+    def test_real_areas(self):
+        self.assertEqual(self.m("concrete", 100, 0, 12)["se_glass_m2"], 382.8)
+        self.assertEqual(self.m("concrete", 100, 0, 12)["skylight_glass_m2"], 359.3)
+        self.assertEqual(self.m("concrete", 100, 0, 0)["skylight_glass_m2"], 0)
+        self.assertLess(self.m("concrete", 50, 0, 12)["se_glass_m2"], 200)
+
+    def test_fin_shading_grows_with_depth(self):
+        s = [round(metrics.fin_shading(d), 3) for d in (0, 0.3, 0.6, 0.9, 1.2)]
+        self.assertEqual(s[0], 0.0)
+        self.assertEqual(s, sorted(s))
+        self.assertTrue(0.25 < s[-1] < 0.4)
+
+    def test_directions(self):
+        base = self.m("concrete", 80, 0.6, 8)
+        less_glass = self.m("concrete", 60, 0.6, 8)
+        self.assertLess(less_glass["daylight"], base["daylight"])
+        self.assertLess(less_glass["cooling"], base["cooling"])
+        deeper = self.m("concrete", 80, 1.2, 8)
+        self.assertLess(deeper["cooling"], base["cooling"])
+        self.assertGreater(deeper["cost"], base["cost"])
+        self.assertGreater(deeper["carbon"], base["carbon"])
+        fewer_lanterns = self.m("concrete", 80, 0.6, 2)
+        self.assertLess(fewer_lanterns["daylight"], base["daylight"])
+        self.assertLess(fewer_lanterns["heritage"], base["heritage"])
+        alu = self.m("aluminium", 80, 0.6, 8)
+        self.assertLess(alu["heritage"], base["heritage"])
+        self.assertGreater(alu["carbon"], base["carbon"])
+
+    def test_deterministic_and_numeric(self):
+        a = self.m("fritted_glass", 70, 0.9, 6)
+        self.assertEqual(a, self.m("fritted_glass", 70, 0.9, 6))
+        self.assertTrue(all(isinstance(v, (int, float)) for v in a.values()))
+        self.assertEqual(set(a), set(metrics.METRIC_INFO))
 
 
 class TestJudgmentInputs(unittest.TestCase):
     """The metric formulas and thresholds are tuned so each scenario class exists."""
 
-    def test_default_design_passes_everything(self):
-        r = core.evaluate(core.default_parameters())
+    def test_as_built_fails_only_the_fins_rule_and_cooling(self):
+        r = core.evaluate(AS_BUILT)
+        self.assertEqual(r["failed_rules"], ["glass_needs_fins"])
+        self.assertEqual(r["failed_goals"], ["cooling"])
+
+    def test_minimum_fins_fix_the_as_built(self):
+        r = core.evaluate(P("concrete", 100, 0.6, 12))
         self.assertTrue(r["hard_rules_pass"])
         self.assertEqual(r["goals_status"], "pass")
+        self.assertFalse(core.evaluate(P("concrete", 100, 0.3, 12))["hard_rules_pass"])
 
     def test_consensus_design_passes(self):
-        r = core.evaluate(P("timber", 45, 20, 2))
+        r = core.evaluate(P("concrete", 90, 0.6, 12))
         self.assertTrue(r["hard_rules_pass"])
         self.assertEqual(r["goals_status"], "pass")
 
-    def test_close_tradeoff_is_marginal_not_fail(self):
-        r = core.evaluate(P("timber", 55, 15, 1.5))
+    def test_close_tradeoffs_are_marginal_not_fail(self):
+        r = core.evaluate(P("aluminium", 70, 0, 12))
         self.assertTrue(r["hard_rules_pass"])
-        self.assertEqual(r["goals_status"], "marginal")
-        self.assertIn("cooling", r["marginal_goals"])
+        self.assertEqual((r["goals_status"], r["marginal_goals"]), ("marginal", ["heritage"]))
+        r = core.evaluate(P("concrete", 50, 0, 4))
+        self.assertEqual((r["goals_status"], r["marginal_goals"]), ("marginal", ["daylight"]))
 
-    def test_min_window_rule(self):
-        r = core.evaluate(P("timber", 20, 15, 1.5))
-        self.assertEqual(r["failed_rules"], ["min_window_ratio"])
-        fixed = core.evaluate(P("timber", 25, 15, 1.5))
+    def test_min_glass_rule(self):
+        r = core.evaluate(P("concrete", 40, 0.3, 10))
+        self.assertEqual(r["failed_rules"], ["min_se_glass"])
+        fixed = core.evaluate(P("concrete", 50, 0.3, 10))
         self.assertTrue(fixed["hard_rules_pass"])
-        self.assertNotEqual(fixed["goals_status"], "fail")
+        self.assertEqual(fixed["goals_status"], "pass")
 
-    def test_glass_shading_rule(self):
-        troll = core.evaluate(P("glass", 60, 0, 0))
-        self.assertIn("glass_needs_shading", troll["failed_rules"])
-        shaded = core.evaluate(P("glass", 50, 20, 2))
-        self.assertTrue(shaded["hard_rules_pass"])
-        self.assertNotEqual(shaded["goals_status"], "fail")
+    def test_aluminium_with_much_solid_fails_heritage(self):
+        r = core.evaluate(P("aluminium", 60, 0, 8))
+        self.assertEqual(r["failed_goals"], ["heritage"])
+        self.assertEqual(core.evaluate(P("concrete", 60, 0, 8))["goals_status"], "pass")
 
-    def test_troll_cannot_be_fixed_within_limits(self):
-        """glass/60/0/0: every change of at most 2 sliders by at most 3 steps (material kept) fails."""
-        brief = core.load_brief()
-        limits = brief["modification_limits"]
+    def _fixes(self, base):
+        """Every change of at most 2 sliders by at most 3 steps (the finish kept) that passes."""
+        limits = core.load_brief()["modification_limits"]
         spec = core.params_by_key()
         sliders = [k for k, p in spec.items() if p["type"] == "slider"]
-        base = P("glass", 60, 0, 0)
-        import itertools
         found = []
         for keys in itertools.chain.from_iterable(itertools.combinations(sliders, n)
                                                   for n in range(1, limits["max_changed_parameters"] + 1)):
@@ -98,19 +151,22 @@ class TestJudgmentInputs(unittest.TestCase):
             for k in keys:
                 p = spec[k]
                 vals = [base[k] + s * p["step"] for s in range(-limits["max_slider_steps"], limits["max_slider_steps"] + 1) if s]
-                ranges.append([v for v in vals if p["min"] <= v <= p["max"]])
+                ranges.append([v for v in vals if p["min"] - 1e-9 <= v <= p["max"] + 1e-9])
             for combo in itertools.product(*ranges):
                 cand = dict(base)
-                cand.update(dict(zip(keys, combo)))
+                cand.update({k: round(v, 4) for k, v in zip(keys, combo)})
                 r = core.evaluate(cand)
                 if r["valid"] and r["hard_rules_pass"] and r["goals_status"] != "fail":
-                    found.append(cand)
-        self.assertEqual(found, [], f"troll proposal is fixable: {found[:3]}")
+                    found.append(r["parameters"])
+        return found
 
-    def test_concrete_heavy_fails_carbon(self):
-        r = core.evaluate(P("concrete", 25, 35, 3))
-        self.assertIn("carbon", r["failed_goals"])
-        self.assertEqual(core.evaluate(P("timber", 25, 35, 3))["failed_goals"], [])
+    def test_unfixable_and_troll_cannot_be_fixed_within_limits(self):
+        """Strong-consensus aluminium: no change of at most 2 sliders by at most 3 steps is valid."""
+        self.assertEqual(self._fixes(P("aluminium", 50, 0, 2)), [])
+        self.assertEqual(self._fixes(P("aluminium", 40, 0, 0)), [])
+
+    def test_as_built_vote_is_fixable(self):
+        self.assertIn(P("concrete", 100, 0.6, 12), self._fixes(AS_BUILT))
 
 
 class TestStateFile(unittest.TestCase):
@@ -118,9 +174,9 @@ class TestStateFile(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             sdir = Path(d)
             self.assertEqual(core.read_state(sdir)["source"], "defaults")
-            core.write_state(P("glass", 50, 20, 2.0), sdir, verdict="ACCEPTED")
+            core.write_state(P("aluminium", 70, 0.6, 8), sdir, verdict="ACCEPTED")
             s = core.read_state(sdir)
-            self.assertEqual(s["parameters"], P("glass", 50, 20, 2.0))
+            self.assertEqual(s["parameters"], P("aluminium", 70, 0.6, 8))
             self.assertEqual(s["verdict"], "ACCEPTED")
             self.assertEqual([p.name for p in sdir.iterdir()], ["parameters.json"])  # no temp files left
 

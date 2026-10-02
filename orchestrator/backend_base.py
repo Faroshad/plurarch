@@ -42,6 +42,10 @@ class Backend:
     def end_session(self, session_id: str) -> None:
         raise NotImplementedError
 
+    def list_active_sessions(self) -> list[dict]:
+        """Every active session except the temporary test ones (rls_test, health_check), newest first."""
+        raise NotImplementedError
+
     def get_questions(self, session_id: str) -> list[dict]:
         raise NotImplementedError
 

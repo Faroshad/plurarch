@@ -1,145 +1,158 @@
 {
-  "note": "Vote counts per question (value -> count). The runner turns them into votes, tallies them exactly like the orchestrator and runs the real reviewer agent. 'expect' lists the acceptable verdicts; 'applied' optionally lists parameter values the applied design must have.",
+  "note": "Langford A retrofit. Vote counts per question (value -> count). The runner turns them into votes, tallies them exactly like the orchestrator and runs the real reviewer agent (Revit off). 'expect' lists the acceptable verdicts; 'applied' optionally lists parameter values the applied design must have. The as-built design (concrete / 100 % / 0 m / 12) fails the fins rule and the cooling goal: it is the retrofit's starting point.",
   "scenarios": [
     {
       "id": "strong_consensus_valid",
-      "covers": "strong consensus with a valid proposal",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "covers": "strong consensus with a valid proposal (90 % glass, 0.6 m fins)",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "timber": 32, "concrete": 4, "glass": 4 },
-        "window_ratio": { "40": 5, "45": 30, "50": 5 },
-        "roof_angle": { "15": 6, "20": 30, "25": 4 },
-        "canopy_depth": { "1.5": 5, "2": 31, "2.5": 4 }
+        "infill_finish": { "concrete": 32, "aluminium": 4, "fritted_glass": 4 },
+        "se_glass_share": { "80": 5, "90": 30, "100": 5 },
+        "fin_depth": { "0.3": 5, "0.6": 30, "0.9": 5 },
+        "skylights_open": { "10": 6, "12": 34 }
       },
       "expect": ["ACCEPTED"],
-      "applied": { "facade_material": "timber", "window_ratio": 45, "roof_angle": 20, "canopy_depth": 2 }
+      "applied": { "infill_finish": "concrete", "se_glass_share": 90, "fin_depth": 0.6, "skylights_open": 12 }
     },
     {
-      "id": "close_tradeoff_timber",
-      "covers": "a close trade-off: cooling misses its threshold by 0.1 (marginal), participants win",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "id": "close_tradeoff_aluminium",
+      "covers": "a close trade-off: aluminium at 70 % glass misses heritage by 1.9 (marginal), participants win",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "timber": 28, "concrete": 6, "glass": 6 },
-        "window_ratio": { "50": 10, "55": 22, "60": 8 },
-        "roof_angle": { "10": 8, "15": 24, "20": 8 },
-        "canopy_depth": { "1": 8, "1.5": 24, "2": 8 }
+        "infill_finish": { "aluminium": 26, "concrete": 9, "fritted_glass": 5 },
+        "se_glass_share": { "60": 8, "70": 24, "80": 8 },
+        "fin_depth": { "0": 30, "0.3": 10 },
+        "skylights_open": { "10": 8, "12": 32 }
       },
       "expect": ["ACCEPTED"],
-      "applied": { "window_ratio": 55 }
+      "applied": { "infill_finish": "aluminium", "se_glass_share": 70 }
     },
     {
-      "id": "close_tradeoff_glass",
-      "covers": "a close trade-off with a glass facade: rule passes, cooling marginal (62.6 vs 62)",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "id": "close_tradeoff_daylight",
+      "covers": "a close trade-off: half the glass and 4 lanterns, daylight 68.6 vs min 70 (marginal), participants win",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "glass": 26, "timber": 9, "concrete": 5 },
-        "window_ratio": { "45": 8, "50": 24, "55": 8 },
-        "roof_angle": { "15": 8, "20": 24, "25": 8 },
-        "canopy_depth": { "1.5": 8, "2": 24, "2.5": 8 }
+        "infill_finish": { "concrete": 30, "fritted_glass": 6, "aluminium": 4 },
+        "se_glass_share": { "40": 6, "50": 24, "60": 10 },
+        "fin_depth": { "0": 28, "0.3": 12 },
+        "skylights_open": { "2": 8, "4": 24, "6": 8 }
       },
       "expect": ["ACCEPTED"],
-      "applied": { "facade_material": "glass", "window_ratio": 50 }
+      "applied": { "se_glass_share": 50, "skylights_open": 4 }
     },
     {
-      "id": "rule_min_window",
-      "covers": "one value violating a hard rule (window ratio 20 < 25)",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "id": "rule_min_glass",
+      "covers": "one value violating a hard rule (SE glass 40 % < 50 %)",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "timber": 25, "concrete": 11, "glass": 4 },
-        "window_ratio": { "20": 30, "25": 8, "30": 2 },
-        "roof_angle": { "10": 8, "15": 24, "20": 8 },
-        "canopy_depth": { "1": 8, "1.5": 24, "2": 8 }
+        "infill_finish": { "concrete": 28, "fritted_glass": 8, "aluminium": 4 },
+        "se_glass_share": { "40": 30, "50": 8, "60": 2 },
+        "fin_depth": { "0": 8, "0.3": 24, "0.6": 8 },
+        "skylights_open": { "8": 8, "10": 24, "12": 8 }
       },
       "expect": ["MODIFIED"],
-      "applied": { "window_ratio": 25, "facade_material": "timber" }
+      "applied": { "se_glass_share": 50, "infill_finish": "concrete" }
     },
     {
-      "id": "rule_glass_shading",
-      "covers": "one combination violating the hot-climate glass shading rule",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "id": "rule_fins",
+      "covers": "one combination violating the climate rule: 100 % glass with only 0.3 m fins",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "glass": 26, "timber": 10, "concrete": 4 },
-        "window_ratio": { "50": 6, "55": 8, "60": 26 },
-        "roof_angle": { "10": 8, "15": 22, "20": 10 },
-        "canopy_depth": { "1": 8, "1.5": 22, "2": 10 }
+        "infill_finish": { "concrete": 27, "fritted_glass": 9, "aluminium": 4 },
+        "se_glass_share": { "90": 12, "100": 28 },
+        "fin_depth": { "0": 8, "0.3": 26, "0.6": 6 },
+        "skylights_open": { "10": 8, "12": 32 }
       },
       "expect": ["MODIFIED"],
-      "applied": { "facade_material": "glass" }
+      "applied": { "infill_finish": "concrete" }
+    },
+    {
+      "id": "as_built_vote",
+      "covers": "the room votes for the building as it stands (100 % glass, no fins): MODIFIED with the minimum fins",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
+      "votes": {
+        "infill_finish": { "concrete": 34, "fritted_glass": 4, "aluminium": 2 },
+        "se_glass_share": { "90": 6, "100": 34 },
+        "fin_depth": { "0": 34, "0.3": 6 },
+        "skylights_open": { "10": 4, "12": 36 }
+      },
+      "expect": ["MODIFIED"],
+      "applied": { "fin_depth": 0.6, "se_glass_share": 100 }
     },
     {
       "id": "troll_extreme",
-      "covers": "an extreme troll-like proposal (all glass, no shading)",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "covers": "an extreme troll-like proposal (aluminium, minimum glass, no fins, every lantern closed)",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "glass": 35, "timber": 3, "concrete": 2 },
-        "window_ratio": { "55": 4, "60": 36 },
-        "roof_angle": { "0": 36, "5": 4 },
-        "canopy_depth": { "0": 37, "0.5": 3 }
+        "infill_finish": { "aluminium": 35, "concrete": 3, "fritted_glass": 2 },
+        "se_glass_share": { "40": 36, "50": 4 },
+        "fin_depth": { "0": 37, "0.3": 3 },
+        "skylights_open": { "0": 36, "2": 4 }
       },
       "expect": ["REJECTED", "MODIFIED"]
     },
     {
       "id": "split_vote",
-      "covers": "a split vote: weak consensus on material, the plurality option fails carbon",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "covers": "a split vote: weak consensus on the finish, the plurality option (aluminium) fails heritage",
+      "current": { "infill_finish": "concrete", "se_glass_share": 90, "fin_depth": 0.6, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "concrete": 16, "timber": 14, "glass": 10 },
-        "window_ratio": { "25": 8, "30": 16, "35": 10, "40": 6 },
-        "roof_angle": { "25": 6, "30": 8, "35": 26 },
-        "canopy_depth": { "2": 6, "2.5": 8, "3": 26 }
+        "infill_finish": { "aluminium": 16, "concrete": 14, "fritted_glass": 10 },
+        "se_glass_share": { "50": 8, "60": 22, "70": 10 },
+        "fin_depth": { "0": 28, "0.3": 12 },
+        "skylights_open": { "6": 8, "8": 24, "10": 8 }
       },
       "expect": ["MODIFIED"]
     },
     {
-      "id": "unfixable",
-      "covers": "a proposal that cannot be fixed within the modification limits (strong consensus)",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "id": "unfixable_keeps_as_built",
+      "covers": "a proposal that cannot be fixed within the limits (strong consensus on aluminium); REJECTED keeps the non-compliant as-built",
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "votes": {
-        "facade_material": { "glass": 34, "timber": 4, "concrete": 2 },
-        "window_ratio": { "50": 4, "55": 32, "60": 4 },
-        "roof_angle": { "0": 33, "5": 7 },
-        "canopy_depth": { "0": 34, "0.5": 6 }
+        "infill_finish": { "aluminium": 34, "concrete": 4, "fritted_glass": 2 },
+        "se_glass_share": { "50": 32, "60": 8 },
+        "fin_depth": { "0": 34, "0.3": 6 },
+        "skylights_open": { "2": 33, "4": 7 }
       },
       "expect": ["REJECTED"],
-      "applied": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 }
+      "applied": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 }
     },
     {
       "id": "contradicts_earlier_rejection",
       "covers": "a later round repeats a proposal rejected earlier: expect consistency or an explicit explanation",
-      "current": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
+      "current": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
       "previous_decisions": [
         { "round_number": 1, "status": "ok", "verdict": "REJECTED",
-          "applied_parameters": { "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 },
-          "rationale": "The all-glass design fails the shading rule (0.12, min 0.35) and overheats (cooling 86.9, max 62); no change within the limits fixes it, so the current design stays." }
+          "applied_parameters": { "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 },
+          "rationale": "Aluminium on half the SE wall with only 2 lanterns fails heritage (36.7, min 70), daylight (65.3, min 70) and carbon (84.4, max 70); no change within the limits fixes it, so the building stays as it is." }
       ],
       "round_number": 2,
       "votes": {
-        "facade_material": { "glass": 34, "timber": 4, "concrete": 2 },
-        "window_ratio": { "55": 5, "60": 35 },
-        "roof_angle": { "0": 35, "5": 5 },
-        "canopy_depth": { "0": 36, "0.5": 4 }
+        "infill_finish": { "aluminium": 33, "concrete": 5, "fritted_glass": 2 },
+        "se_glass_share": { "50": 34, "60": 6 },
+        "fin_depth": { "0": 35, "0.3": 5 },
+        "skylights_open": { "2": 34, "4": 6 }
       },
       "expect": ["REJECTED"],
       "needs_consistency_note": true
     },
     {
       "id": "contradicts_earlier_modification",
-      "covers": "a later round votes again for a value modified earlier (window 20): same kind of fix expected",
-      "current": { "facade_material": "timber", "window_ratio": 25, "roof_angle": 15, "canopy_depth": 1.5 },
+      "covers": "a later round votes again for a value modified earlier (SE glass 40 %): same kind of fix expected",
+      "current": { "infill_finish": "concrete", "se_glass_share": 50, "fin_depth": 0.3, "skylights_open": 10 },
       "previous_decisions": [
         { "round_number": 1, "status": "ok", "verdict": "MODIFIED",
-          "applied_parameters": { "facade_material": "timber", "window_ratio": 25, "roof_angle": 15, "canopy_depth": 1.5 },
-          "rationale": "Voted 20% windows break the 25% minimum rule and daylight fails (43.0, min 50); moving one step to 25% gives daylight 50.5." }
+          "applied_parameters": { "infill_finish": "concrete", "se_glass_share": 50, "fin_depth": 0.3, "skylights_open": 10 },
+          "rationale": "The voted 40% SE glass breaks the 50% minimum rule; one step to 50% fixes it and everything else passes (daylight 76.2, heritage 83.2)." }
       ],
       "round_number": 2,
       "votes": {
-        "facade_material": { "timber": 30, "concrete": 8, "glass": 2 },
-        "window_ratio": { "20": 28, "25": 10, "30": 2 },
-        "roof_angle": { "15": 8, "20": 26, "25": 6 },
-        "canopy_depth": { "1.5": 26, "2": 14 }
+        "infill_finish": { "concrete": 30, "fritted_glass": 8, "aluminium": 2 },
+        "se_glass_share": { "40": 28, "50": 10, "60": 2 },
+        "fin_depth": { "0.3": 26, "0.6": 14 },
+        "skylights_open": { "10": 26, "12": 14 }
       },
       "expect": ["MODIFIED"],
-      "applied": { "window_ratio": 25 },
+      "applied": { "se_glass_share": 50 },
       "needs_consistency_note": true
     }
   ]

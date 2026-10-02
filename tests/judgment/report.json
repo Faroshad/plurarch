@@ -1,558 +1,31 @@
 [
  {
   "scenario": {
-   "id": "strong_consensus_valid",
-   "covers": "strong consensus with a valid proposal",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "timber": 32,
-     "concrete": 4,
-     "glass": 4
-    },
-    "window_ratio": {
-     "40": 5,
-     "45": 30,
-     "50": 5
-    },
-    "roof_angle": {
-     "15": 6,
-     "20": 30,
-     "25": 4
-    },
-    "canopy_depth": {
-     "1.5": 5,
-     "2": 31,
-     "2.5": 4
-    }
-   },
-   "expect": [
-    "ACCEPTED"
-   ],
-   "applied": {
-    "facade_material": "timber",
-    "window_ratio": 45,
-    "roof_angle": 20,
-    "canopy_depth": 2
-   }
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 11.2,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 45,
-     "roof_angle": 20,
-     "canopy_depth": 2.0
-    },
-    "applied_ok": true,
-    "rationale": "The vote passes both hard rules and all four goals, and consensus is strong, so it is applied as voted. Daylight rises 67.5 \u2192 70.7 (min 50) and cooling eases 52.3 \u2192 51.8 (max 62). Cost rises 90.9 \u2192 94.5 (max 100) and carbon rises 58.2 \u2192 61.7 (max 90), both still within budget.",
-    "consistency_note": "This is the first decision in the session, so there are no earlier decisions to compare against.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 11.2,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [
-     "rationale trimmed to 3 sentences"
-    ],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 45,
-     "roof_angle": 20,
-     "canopy_depth": 2.0
-    },
-    "applied_ok": true,
-    "rationale": "The vote passes both hard rules and all four goals, and consensus is strong on every question, so it is applied as voted. Daylight rises 67.5 \u2192 70.7 (min 50). Cooling improves 52.3 \u2192 51.8 (max 62).",
-    "consistency_note": "No previous decisions in this session, so there is nothing to stay consistent with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 11.0,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 45,
-     "roof_angle": 20,
-     "canopy_depth": 2.0
-    },
-    "applied_ok": true,
-    "rationale": "The vote passes both hard rules and all four goals, so it is applied exactly as voted. Daylight rises 67.5 \u2192 70.7 (min 50) and cooling eases 52.3 \u2192 51.8 (max 62). Cost rises 90.9 \u2192 94.5 (max 100) and carbon 58.2 \u2192 61.7 (max 90), both still within budget.",
-    "consistency_note": "No previous decisions exist in this session, so there is nothing to stay consistent with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "close_tradeoff_timber",
-   "covers": "a close trade-off: cooling misses its threshold by 0.1 (marginal), participants win",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "timber": 28,
-     "concrete": 6,
-     "glass": 6
-    },
-    "window_ratio": {
-     "50": 10,
-     "55": 22,
-     "60": 8
-    },
-    "roof_angle": {
-     "10": 8,
-     "15": 24,
-     "20": 8
-    },
-    "canopy_depth": {
-     "1": 8,
-     "1.5": 24,
-     "2": 8
-    }
-   },
-   "expect": [
-    "ACCEPTED"
-   ],
-   "applied": {
-    "window_ratio": 55
-   }
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 11.2,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 55,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The vote passes both hard rules and no goal fails, so it is applied as voted. Cooling is 62.1 against a max of 62, which is marginal, so the participants' choice wins. Raising windows from 40% to 55% lifts daylight from 67.5 to 78.7, while cooling rises from 52.3 to 62.1.",
-    "consistency_note": "This is the first decision in the session, so there are no earlier decisions to compare against.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 9.8,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 55,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The proposal passes both hard rules and no goal fails. Cooling is 62.1 against a maximum of 62, which is only marginal, so the strong 40-voter consensus stands. Window ratio rises from 40 to 55%: daylight goes 67.5 \u2192 78.7 and cooling 52.3 \u2192 62.1.",
-    "consistency_note": "",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 9.8,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 55,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The proposal passes both hard rules and no goal fails. Cooling is 62.1 against a maximum of 62, which is only marginal, so the participants' choice stands. Daylight rises from 67.5 to 78.7, cost from 90.9 to 92.7, and carbon from 58.2 to 61.8, all within their limits.",
-    "consistency_note": "",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "close_tradeoff_glass",
-   "covers": "a close trade-off with a glass facade: rule passes, cooling marginal (62.6 vs 62)",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "glass": 26,
-     "timber": 9,
-     "concrete": 5
-    },
-    "window_ratio": {
-     "45": 8,
-     "50": 24,
-     "55": 8
-    },
-    "roof_angle": {
-     "15": 8,
-     "20": 24,
-     "25": 8
-    },
-    "canopy_depth": {
-     "1.5": 8,
-     "2": 24,
-     "2.5": 8
-    }
-   },
-   "expect": [
-    "ACCEPTED"
-   ],
-   "applied": {
-    "facade_material": "glass",
-    "window_ratio": 50
-   }
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 9.2,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "glass",
-     "window_ratio": 50,
-     "roof_angle": 20,
-     "canopy_depth": 2.0
-    },
-    "applied_ok": true,
-    "rationale": "Both hard rules pass (glass shading 0.425 vs min 0.35) and no goal fails. Cooling is 62.6 vs max 62, which is only marginal, so the voters' choice stands. Compared with the current design: daylight 67.5 \u2192 76.7, cost 90.9 \u2192 99.1 (max 100), carbon 58.2 \u2192 76.9 (max 90).",
-    "consistency_note": "No previous decisions in this session; this is the first ruling.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 9.0,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "glass",
-     "window_ratio": 50,
-     "roof_angle": 20,
-     "canopy_depth": 2.0
-    },
-    "applied_ok": true,
-    "rationale": "The glass design passes both hard rules (shading 0.425, needs 0.35) and no goal fails. Cooling is 62.6 against a max of 62, which is only marginal, so the participants' choice stands. Compared with the current design, daylight rises 67.5 \u2192 76.7 and cost rises 90.9 \u2192 99.1, still under 100.",
-    "consistency_note": "No previous decisions in this session; this is the first round.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 9.0,
-    "verdict": "ACCEPTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "glass",
-     "window_ratio": 50,
-     "roof_angle": 20,
-     "canopy_depth": 2.0
-    },
-    "applied_ok": true,
-    "rationale": "The glass design passes both hard rules (shading 0.425, needs at least 0.35) and no goal fails. Cooling is 62.6 against a max of 62, only marginal, so the participants' choice stands. Daylight 76.7, cost 99.1 and carbon 76.9 all pass (metrics are indicative proxies).",
-    "consistency_note": "No previous decisions in this session; this is the first round.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "rule_min_window",
-   "covers": "one value violating a hard rule (window ratio 20 < 25)",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "timber": 25,
-     "concrete": 11,
-     "glass": 4
-    },
-    "window_ratio": {
-     "20": 30,
-     "25": 8,
-     "30": 2
-    },
-    "roof_angle": {
-     "10": 8,
-     "15": 24,
-     "20": 8
-    },
-    "canopy_depth": {
-     "1": 8,
-     "1.5": 24,
-     "2": 8
-    }
-   },
-   "expect": [
-    "MODIFIED"
-   ],
-   "applied": {
-    "window_ratio": 25,
-    "facade_material": "timber"
-   }
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 14.3,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 25,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The voted 20% windows break the 25% minimum rule, and daylight fails at 43.0 (min 50). Raising windows one step to 25% gives daylight 50.5, and cooling (42.4), cost (89.1) and carbon (54.6) still pass. Material, roof and canopy stay as voted.",
-    "consistency_note": "No previous decisions in this session, so there is nothing to compare against.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 13.3,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 25,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The vote for 20% windows breaks the 25% minimum rule and fails daylight (43.0, min 50). Raising windows one step to 25% gives daylight 50.5 with cooling 42.4, cost 89.1 and carbon 54.6 all passing. Material, roof and canopy stay as voted.",
-    "consistency_note": "First decision of the session, so there are no earlier decisions to compare with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 14.7,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 25,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "Voters chose 20% windows, but that breaks the 25% minimum rule and daylight falls to 43.0 (min 50). Moving one step to 25% lifts daylight to 50.5, and cooling (42.4), cost (89.1) and carbon (54.6) all stay within limits. Material, roof and canopy stay as voted.",
-    "consistency_note": "No previous decisions in this session; this is the first ruling.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "rule_glass_shading",
-   "covers": "one combination violating the hot-climate glass shading rule",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "glass": 26,
-     "timber": 10,
-     "concrete": 4
-    },
-    "window_ratio": {
-     "50": 6,
-     "55": 8,
-     "60": 26
-    },
-    "roof_angle": {
-     "10": 8,
-     "15": 22,
-     "20": 10
-    },
-    "canopy_depth": {
-     "1": 8,
-     "1.5": 22,
-     "2": 10
-    }
-   },
-   "expect": [
-    "MODIFIED"
-   ],
-   "applied": {
-    "facade_material": "glass"
-   }
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 17.1,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "glass",
-     "window_ratio": 60,
-     "roof_angle": 15,
-     "canopy_depth": 2.5
-    },
-    "applied_ok": true,
-    "rationale": "Glass with 60% windows missed the shading rule (0.349, min 0.35) and failed cooling (71.8, max 62). Deepening only the canopy 1.5 \u2192 2.5 m gives shading 0.451 and cooling 65.0 (marginal). Glass, 60% windows and roof angle stay as voted; cost is marginal at 100.5 (max 100).",
-    "consistency_note": "No previous decisions in this session; this is the first ruling.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 15.9,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "glass",
-     "window_ratio": 60,
-     "roof_angle": 15,
-     "canopy_depth": 2.5
-    },
-    "applied_ok": true,
-    "rationale": "The voted design narrowly failed the glass shading rule (0.349, needs 0.35) and cooling (71.8, max 62). Deepening the canopy 1.5 \u2192 2.5 m gives shading 0.451 and cooling 65.0, which is marginal. Glass, 60% windows and roof angle stay as voted, and daylight stays at 82.0.",
-    "consistency_note": "First decision of the session, so there are no earlier decisions to compare against.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 16.5,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "glass",
-     "window_ratio": 60,
-     "roof_angle": 15,
-     "canopy_depth": 2.5
-    },
-    "applied_ok": true,
-    "rationale": "The voted design broke the glass shading rule (0.349, needs 0.35) and failed cooling (71.8, max 62). A deeper canopy, 1.5 \u2192 2.5 m, raises shading to 0.451 and cuts cooling to 65.0 (marginal). Glass, 60% windows and roof angle stay as voted; cost is 100.5 (marginal).",
-    "consistency_note": "This is the first decision of the session, so there are no earlier decisions to compare with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
    "id": "troll_extreme",
-   "covers": "an extreme troll-like proposal (all glass, no shading)",
+   "covers": "an extreme troll-like proposal (aluminium, minimum glass, no fins, every lantern closed)",
    "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
+    "infill_finish": "concrete",
+    "se_glass_share": 100,
+    "fin_depth": 0,
+    "skylights_open": 12
    },
    "votes": {
-    "facade_material": {
-     "glass": 35,
-     "timber": 3,
-     "concrete": 2
+    "infill_finish": {
+     "aluminium": 35,
+     "concrete": 3,
+     "fritted_glass": 2
     },
-    "window_ratio": {
-     "55": 4,
-     "60": 36
+    "se_glass_share": {
+     "40": 36,
+     "50": 4
     },
-    "roof_angle": {
-     "0": 36,
-     "5": 4
-    },
-    "canopy_depth": {
+    "fin_depth": {
      "0": 37,
-     "0.5": 3
+     "0.3": 3
+    },
+    "skylights_open": {
+     "0": 36,
+     "2": 4
     }
    },
    "expect": [
@@ -564,21 +37,23 @@
    {
     "ok": true,
     "error": null,
-    "duration_s": 21.1,
+    "duration_s": 18.5,
     "verdict": "REJECTED",
     "fatal": [],
     "warnings": [
-     "rationale trimmed to 3 sentences"
+     "the kept current design breaks hard rules (glass_needs_fins); REJECTED keeps it unchanged, as the brief allows for the as-built design",
+     "evidence.proposal_metrics corrected for shading, se_glass_m2, skylight_glass_m2",
+     "evidence.applied_metrics corrected for shading, se_glass_m2, skylight_glass_m2"
     ],
     "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
+     "infill_finish": "concrete",
+     "se_glass_share": 100,
+     "fin_depth": 0.0,
+     "skylights_open": 12
     },
     "applied_ok": true,
-    "rationale": "The all-glass, 60% windows, no-shading design breaks the shading rule (0.12 vs 0.35 needed) and fails cooling (86.9 vs max 62). The best fix within the limits (2 parameters, 3 steps each) is glass, 45% windows and a 1.5 m canopy. It passes the rules but cooling is still 68.1, so no valid modification exists.",
-    "consistency_note": "First round of the session, so there are no earlier decisions to compare with.",
+    "rationale": "The vote breaks the 50% minimum glass rule (40%), and daylight 53.6, cost 98.6, carbon 98.3 and heritage 27.6 all fail. Fixing the glass and lanterns still leaves carbon 84.4 (max 70) and heritage 36.7 (min 70) failing. The 87.5% aluminium vote is strong consensus and can't be changed, so no valid modification exists and the current design stays.",
+    "consistency_note": "No earlier decisions this session; this is round 1.",
     "cites_metric": true,
     "unverified_numbers": [],
     "evaluate_calls": 0
@@ -586,19 +61,101 @@
    {
     "ok": true,
     "error": null,
-    "duration_s": 21.5,
+    "duration_s": 24.3,
     "verdict": "REJECTED",
     "fatal": [],
-    "warnings": [],
+    "warnings": [
+     "the kept current design breaks hard rules (glass_needs_fins); REJECTED keeps it unchanged, as the brief allows for the as-built design",
+     "evidence.proposal_metrics corrected for shading, se_glass_m2, skylight_glass_m2",
+     "evidence.applied_metrics corrected for shading, se_glass_m2, skylight_glass_m2"
+    ],
     "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
+     "infill_finish": "concrete",
+     "se_glass_share": 100,
+     "fin_depth": 0.0,
+     "skylights_open": 12
     },
     "applied_ok": true,
-    "rationale": "The glass, 60% windows, no roof or canopy proposal breaks the shading rule (0.12, needs 0.35) and overheats (cooling 86.9, max 62). Glass has strong consensus and the limits allow only 2 changes of up to 3 steps. The best valid fix I found (45% windows, 1.5 m canopy) still gives cooling 68.1, so the current design stays (cooling 52.3).",
-    "consistency_note": "First round of the session, so there are no earlier decisions to compare with.",
+    "rationale": "The vote breaks the 50% minimum-glass rule (40%) and fails daylight 53.6, cost 98.6, carbon 98.3 and heritage 27.6. Within the limits (2 parameters, 3 steps, aluminium fixed by 87.5% consensus) the best fix is 70% glass and 6 lanterns, but heritage is still 54.9 against a minimum of 70. No valid modification exists, so the current design stays; Revit was not reachable (disabled for this run).",
+    "consistency_note": "",
+    "cites_metric": true,
+    "unverified_numbers": [],
+    "evaluate_calls": 0
+   }
+  ],
+  "passed": 2,
+  "consistency": 1.0
+ },
+ {
+  "scenario": {
+   "id": "contradicts_earlier_rejection",
+   "covers": "a later round repeats a proposal rejected earlier: expect consistency or an explicit explanation",
+   "current": {
+    "infill_finish": "concrete",
+    "se_glass_share": 100,
+    "fin_depth": 0,
+    "skylights_open": 12
+   },
+   "previous_decisions": [
+    {
+     "round_number": 1,
+     "status": "ok",
+     "verdict": "REJECTED",
+     "applied_parameters": {
+      "infill_finish": "concrete",
+      "se_glass_share": 100,
+      "fin_depth": 0,
+      "skylights_open": 12
+     },
+     "rationale": "Aluminium on half the SE wall with only 2 lanterns fails heritage (36.7, min 70), daylight (65.3, min 70) and carbon (84.4, max 70); no change within the limits fixes it, so the building stays as it is."
+    }
+   ],
+   "round_number": 2,
+   "votes": {
+    "infill_finish": {
+     "aluminium": 33,
+     "concrete": 5,
+     "fritted_glass": 2
+    },
+    "se_glass_share": {
+     "50": 34,
+     "60": 6
+    },
+    "fin_depth": {
+     "0": 35,
+     "0.3": 5
+    },
+    "skylights_open": {
+     "2": 34,
+     "4": 6
+    }
+   },
+   "expect": [
+    "REJECTED"
+   ],
+   "needs_consistency_note": true
+  },
+  "results": [
+   {
+    "ok": true,
+    "error": null,
+    "duration_s": 15.1,
+    "verdict": "REJECTED",
+    "fatal": [],
+    "warnings": [
+     "the kept current design breaks hard rules (glass_needs_fins); REJECTED keeps it unchanged, as the brief allows for the as-built design",
+     "evidence.proposal_metrics corrected for shading, se_glass_m2, skylight_glass_m2",
+     "evidence.applied_metrics corrected for shading, se_glass_m2, skylight_glass_m2"
+    ],
+    "applied": {
+     "infill_finish": "concrete",
+     "se_glass_share": 100,
+     "fin_depth": 0.0,
+     "skylights_open": 12
+    },
+    "applied_ok": true,
+    "rationale": "Aluminium on half the SE wall with 2 lanterns fails daylight (65.3, min 70), carbon (84.4, max 70) and heritage (36.7, min 70). Opening more lanterns (8) fixes daylight and carbon (74.3, 65.4), but heritage stays at 49.9. Aluminium has strong consensus (82.5%) and can't be changed, and no valid design exists within the 2-parameter limit, so the building stays as it is.",
+    "consistency_note": "Same outcome as round 1: the aluminium infill drives the heritage failure, and no change within the limits can fix it.",
     "cites_metric": true,
     "unverified_numbers": [],
     "evaluate_calls": 0
@@ -609,462 +166,26 @@
     "duration_s": 18.1,
     "verdict": "REJECTED",
     "fatal": [],
-    "warnings": [],
+    "warnings": [
+     "the kept current design breaks hard rules (glass_needs_fins); REJECTED keeps it unchanged, as the brief allows for the as-built design",
+     "evidence.proposal_metrics corrected for shading, se_glass_m2, skylight_glass_m2",
+     "evidence.applied_metrics corrected for shading, se_glass_m2, skylight_glass_m2"
+    ],
     "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
+     "infill_finish": "concrete",
+     "se_glass_share": 100,
+     "fin_depth": 0.0,
+     "skylights_open": 12
     },
     "applied_ok": true,
-    "rationale": "The vote (glass, 60% windows, no roof pitch, no canopy) breaks the shading rule (0.12, needs 0.35) and fails cooling (86.9, max 62). Within the limits of 2 parameters and 3 steps, the best fix I found still had cooling at 68.1, which is over the limit. So the current design stays: cooling 52.3, daylight 67.5, and all rules and goals pass.",
-    "consistency_note": "",
+    "rationale": "The vote for aluminium (82.5%, strong) can't be changed, and with aluminium heritage tops out at 54.6 (min 70) in every design within the limits. The voted design also fails daylight (65.3 vs min 70) and carbon (84.4 vs max 70). So the building stays as it is (cooling 73.0, max 68).",
+    "consistency_note": "Same outcome as round 1 (REJECTED), where aluminium also failed heritage; this round's four evaluations confirm that no valid modification exists.",
     "cites_metric": true,
     "unverified_numbers": [],
     "evaluate_calls": 0
    }
   ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "split_vote",
-   "covers": "a split vote: weak consensus on material, the plurality option fails carbon",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "concrete": 16,
-     "timber": 14,
-     "glass": 10
-    },
-    "window_ratio": {
-     "25": 8,
-     "30": 16,
-     "35": 10,
-     "40": 6
-    },
-    "roof_angle": {
-     "25": 6,
-     "30": 8,
-     "35": 26
-    },
-    "canopy_depth": {
-     "2": 6,
-     "2.5": 8,
-     "3": 26
-    }
-   },
-   "expect": [
-    "MODIFIED"
-   ]
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 14.5,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 30,
-     "roof_angle": 35,
-     "canopy_depth": 3.0
-    },
-    "applied_ok": true,
-    "rationale": "Concrete failed the carbon goal (94.0, max 90). Material consensus was weak and timber was a close second, so we switched to timber: carbon 94.0 \u2192 63.2. All strongly-backed slider values stay as voted, and every goal now passes (cost 99.8, max 100).",
-    "consistency_note": "No previous decisions in this session; this is the first ruling.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 14.7,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 30,
-     "roof_angle": 35,
-     "canopy_depth": 3.0
-    },
-    "applied_ok": true,
-    "rationale": "The voted concrete design fails the carbon goal (94.0, max 90). Timber, a close runner-up (35% vs 40%), brings carbon to 63.2 and passes every goal. Windows, roof and canopy stay as voted, since they had strong consensus.",
-    "consistency_note": "No previous decisions exist in this session, so there is nothing to compare with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 15.1,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 30,
-     "roof_angle": 35,
-     "canopy_depth": 3.0
-    },
-    "applied_ok": true,
-    "rationale": "Concrete gave carbon 94.0 (max 90), a goal fail. Material consensus was weak (40%) and timber was a close second (35%), so switching to timber gives carbon 63.2. Window, roof and canopy stay as voted, and every goal and rule passes (cost 99.8, max 100).",
-    "consistency_note": "First round of the session, so there are no earlier decisions to compare with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "unfixable",
-   "covers": "a proposal that cannot be fixed within the modification limits (strong consensus)",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "votes": {
-    "facade_material": {
-     "glass": 34,
-     "timber": 4,
-     "concrete": 2
-    },
-    "window_ratio": {
-     "50": 4,
-     "55": 32,
-     "60": 4
-    },
-    "roof_angle": {
-     "0": 33,
-     "5": 7
-    },
-    "canopy_depth": {
-     "0": 34,
-     "0.5": 6
-    }
-   },
-   "expect": [
-    "REJECTED"
-   ],
-   "applied": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   }
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 15.3,
-    "verdict": "REJECTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The glass, 55% windows, flat roof, no canopy design fails the shading rule (0.12, needs 0.35) and cooling (83.1, max 62). The best fix within the limits (2 parameters, 3 steps each) reaches shading 0.349 and cooling 69.3, so the rule and the cooling goal still fail. The current timber design stays (cooling 52.3, shading 0.349).",
-    "consistency_note": "No previous decisions in this session; this is the first ruling.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 20.5,
-    "verdict": "REJECTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The glass, 55% windows, flat roof, no canopy proposal breaks the shading rule (0.12 vs 0.35 needed) and overheats (cooling 83.1, max 62). Within the limits of 2 parameters and 3 steps, the best glass option only gets cooling to 65.2, still a fail. The current timber design stays (cooling 52.3, all goals pass).",
-    "consistency_note": "First decision of the session, so there are no earlier decisions to compare with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 22.7,
-    "verdict": "REJECTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The glass proposal breaks the shading rule (0.12 vs 0.35 needed) and its cooling index is 83.1 against a max of 62. Within the limits of 2 parameters and 3 steps each, the closest valid glass design reaches cooling 65.2, which is still a fail. So the current timber design stays (cooling 52.3, all goals pass).",
-    "consistency_note": "This is the first decision of the session, so there are no earlier decisions to compare with.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "contradicts_earlier_rejection",
-   "covers": "a later round repeats a proposal rejected earlier: expect consistency or an explicit explanation",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 40,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "previous_decisions": [
-    {
-     "round_number": 1,
-     "status": "ok",
-     "verdict": "REJECTED",
-     "applied_parameters": {
-      "facade_material": "timber",
-      "window_ratio": 40,
-      "roof_angle": 15,
-      "canopy_depth": 1.5
-     },
-     "rationale": "The all-glass design fails the shading rule (0.12, min 0.35) and overheats (cooling 86.9, max 62); no change within the limits fixes it, so the current design stays."
-    }
-   ],
-   "round_number": 2,
-   "votes": {
-    "facade_material": {
-     "glass": 34,
-     "timber": 4,
-     "concrete": 2
-    },
-    "window_ratio": {
-     "55": 5,
-     "60": 35
-    },
-    "roof_angle": {
-     "0": 35,
-     "5": 5
-    },
-    "canopy_depth": {
-     "0": 36,
-     "0.5": 4
-    }
-   },
-   "expect": [
-    "REJECTED"
-   ],
-   "needs_consistency_note": true
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 19.1,
-    "verdict": "REJECTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The all-glass, no-shading design fails the shading rule (0.12, min 0.35) and overheats (cooling 86.9, max 62). The closest valid fixes within the limits still overheat (cooling 68.1 to 71.9), so the current timber design stays (cooling 52.3, daylight 67.5).",
-    "consistency_note": "Same outcome as round 1: the same glass, 60%, flat, no-canopy proposal fails the same rule and goal, and no fix within the limits exists.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 26.5,
-    "verdict": "REJECTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The all-glass, 60% window, no-shade design breaks the shading rule (0.12, min 0.35) and overheats (cooling 86.9, max 62). Within the limits of 2 parameters and 3 steps, the best glass options still reach cooling 68.1 or higher, so the current timber design stays (cooling 52.3).",
-    "consistency_note": "Same outcome as round 1: the glass-heavy proposal was rejected for the same shading and cooling failures, and the same limits leave no valid fix.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 17.9,
-    "verdict": "REJECTED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 40,
-     "roof_angle": 15,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The all-glass proposal breaks the shading rule (0.12, min 0.35) and overheats (cooling 86.9, max 62). The best fix within the limits (window 45%, canopy 1.5 m) passes the rules but still gets cooling 68.1, above the 62 max. So the current timber design stays (cooling 52.3).",
-    "consistency_note": "Same outcome as round 1: the all-glass design is rejected again for the same shading and cooling failures.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
-  "consistency": 1.0
- },
- {
-  "scenario": {
-   "id": "contradicts_earlier_modification",
-   "covers": "a later round votes again for a value modified earlier (window 20): same kind of fix expected",
-   "current": {
-    "facade_material": "timber",
-    "window_ratio": 25,
-    "roof_angle": 15,
-    "canopy_depth": 1.5
-   },
-   "previous_decisions": [
-    {
-     "round_number": 1,
-     "status": "ok",
-     "verdict": "MODIFIED",
-     "applied_parameters": {
-      "facade_material": "timber",
-      "window_ratio": 25,
-      "roof_angle": 15,
-      "canopy_depth": 1.5
-     },
-     "rationale": "Voted 20% windows break the 25% minimum rule and daylight fails (43.0, min 50); moving one step to 25% gives daylight 50.5."
-    }
-   ],
-   "round_number": 2,
-   "votes": {
-    "facade_material": {
-     "timber": 30,
-     "concrete": 8,
-     "glass": 2
-    },
-    "window_ratio": {
-     "20": 28,
-     "25": 10,
-     "30": 2
-    },
-    "roof_angle": {
-     "15": 8,
-     "20": 26,
-     "25": 6
-    },
-    "canopy_depth": {
-     "1.5": 26,
-     "2": 14
-    }
-   },
-   "expect": [
-    "MODIFIED"
-   ],
-   "applied": {
-    "window_ratio": 25
-   },
-   "needs_consistency_note": true
-  },
-  "results": [
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 14.1,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 25,
-     "roof_angle": 20,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "Voted 20% windows break the 25% minimum rule and daylight fails (42.7, min 50). One step to 25% fixes it: daylight 50.1, cooling 41.7 (max 62), cost 90.1, carbon 55.4. Timber, roof 20\u00b0 and canopy 1.5 m stay as voted.",
-    "consistency_note": "Same fix as round 1 (windows raised to 25% for the hard rule and daylight), but the roof now follows the 20\u00b0 vote, which passes all goals.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 14.5,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 25,
-     "roof_angle": 20,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "The voted 20% windows break the 25% minimum rule, and daylight fails at 42.7 (min 50). Moving one step to 25% lifts daylight to 50.1, and every goal passes. The voted roof angle (20\u00b0) and canopy (1.5 m) are kept.",
-    "consistency_note": "Same fix as round 1: 20% windows were raised to the 25% minimum, and this time the voted 20\u00b0 roof is kept.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   },
-   {
-    "ok": true,
-    "error": null,
-    "duration_s": 15.3,
-    "verdict": "MODIFIED",
-    "fatal": [],
-    "warnings": [],
-    "applied": {
-     "facade_material": "timber",
-     "window_ratio": 25,
-     "roof_angle": 20,
-     "canopy_depth": 1.5
-    },
-    "applied_ok": true,
-    "rationale": "Voted 20% windows break the 25% minimum rule, and daylight fails (42.7, min 50). Moving one step to 25% gives daylight 50.1, with cooling 41.7 (max 62), cost 90.1 and carbon 55.4 all passing. Timber, the 20\u00b0 roof and the 1.5 m canopy stay as voted.",
-    "consistency_note": "Same fix as round 1: window ratio raised from 20% to 25% because of the minimum-window rule and the daylight failure. The roof angle moves to the voted 20\u00b0.",
-    "cites_metric": true,
-    "unverified_numbers": [],
-    "evaluate_calls": 0
-   }
-  ],
-  "passed": 3,
+  "passed": 2,
   "consistency": 1.0
  }
 ]

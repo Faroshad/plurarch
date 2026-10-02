@@ -4,7 +4,7 @@
 
 /** Pixel size per kind at full quality (halved on the lowest quality tier). */
 export const TEXTURE_SIZE = {
-  wood: 512, stone: 512, concrete: 256, ground: 256, foliage: 256, fabric: 256, plaster: 256, metal: 256, paint: 128,
+  wood: 512, stone: 512, concrete: 256, ground: 256, foliage: 256, fabric: 256, plaster: 256, metal: 256, paint: 128, frit: 256,
 };
 
 function rng(seed) {
@@ -173,7 +173,21 @@ function metal(size) {
   });
 }
 
-const PAINTERS = { wood, concrete, stone, ground, foliage, fabric, plaster, metal, paint: plaster };
+// Fritted glass: a fine grid of light ceramic dots on a pale ground (the panel itself is translucent).
+function frit(size) {
+  const r = rng(97);
+  const n = 16; // dots per tile edge (tile 0.6 m: a dot every 37 mm)
+  const cell = size / n;
+  const rad = cell * 0.3;
+  return paint(size, (u, v, x, y, rgb) => {
+    const cx = (Math.floor(x / cell) + 0.5) * cell; const cy = (Math.floor(y / cell) + 0.5) * cell;
+    const d = Math.hypot(x - cx, y - cy);
+    const dot = d < rad ? 1 : d < rad + 1 ? 0.5 : 0;
+    set(rgb, 0.8 + 0.2 * dot + 0.02 * (r() - 0.5));
+  });
+}
+
+const PAINTERS = { wood, concrete, stone, ground, foliage, fabric, plaster, metal, paint: plaster, frit };
 
 /** Draw the texture canvas for a kind, or null for kinds without a map (glass, light). */
 export function drawTexture(kind, scale = 1) {

@@ -3,7 +3,7 @@
     .venv\\Scripts\\python.exe tests\\judgment\\run_judgment.py [--runs 3] [--parallel 3] [--only id,id] [--model sonnet]
     .venv\\Scripts\\python.exe tests\\judgment\\run_judgment.py --dry     # tally + deterministic check only, no agent
 
-Every run uses its own temporary state folder (the live model is untouched). Reports, per scenario:
+Every run uses its own temporary state folder and Revit off (the live model and the Revit copy are untouched). Reports, per scenario:
 verdict distribution, pass rate against the expected verdicts, consistency (share of runs that agree
 with the most common verdict), whether the rationale cites real metric values from the tool outputs,
 and the run time. Writes tests/judgment/report.md and report.json.
@@ -99,7 +99,8 @@ def one_run(sc: dict, proposal: dict, model: str, timeout: float, schema, brief,
     try:
         core.write_state(sc["current"], tmp, verdict="TEST")
         res = run_agent(proposal, state_dir=tmp, claude=local.get("claude", "claude"),
-                        python=local.get("python", sys.executable), model=model, timeout_s=timeout)
+                        python=local.get("python", sys.executable), model=model, timeout_s=timeout,
+                        extra_env={"PLURARCH_REVIT": "off"})   # never touch the Revit model
         out = {"ok": res.ok, "error": res.error, "duration_s": res.duration_s, "verdict": None}
         if not res.ok:
             return out
@@ -116,6 +117,8 @@ def one_run(sc: dict, proposal: dict, model: str, timeout: float, schema, brief,
         known = known_numbers(res.log_entries, proposal, brief)
         metrics = metric_values(res.log_entries)
         applied_ok = all(rec["applied_parameters"].get(k) == v for k, v in sc.get("applied", {}).items())
+        if rec["verdict"] in ("ACCEPTED", "MODIFIED"):   # a valid design: no failing goal
+            applied_ok = applied_ok and not core.evaluate(rec["applied_parameters"], schema, brief)["failed_goals"]
         out.update({
             "verdict": rec["verdict"],
             "applied": rec["applied_parameters"],

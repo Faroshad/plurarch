@@ -2,7 +2,8 @@
 
 Fatal problems (the decision becomes "failed" and the previous design is restored):
 - the record does not match agent/decision_schema.json
-- applied parameters are invalid or break a hard rule
+- applied parameters are invalid or break a hard rule (except REJECTED, which keeps the current design:
+  when that design itself breaks a rule, e.g. the non-compliant as-built Langford A, it is only a warning)
 - the verdict does not match what happened (ACCEPTED must equal the proposal; REJECTED must keep the
   design; ACCEPTED/MODIFIED need a successful set_parameters in this run's tool log)
 - the model file does not hold the applied parameters
@@ -62,9 +63,6 @@ def validate_decision(record, proposal_params: dict, before_params: dict, state_
     if errs:
         return None, ["applied_parameters invalid: " + "; ".join(errs)], warnings
     rec["applied_parameters"] = applied
-    ev_applied = core.evaluate(applied, schema, brief)
-    if not ev_applied["hard_rules_pass"]:
-        fatal.append("applied parameters break hard rules: " + ", ".join(ev_applied["failed_rules"]))
 
     applied_ok = [e for e in log_entries if e.get("tool") == "set_parameters" and e.get("ok")]
     if verdict == "MODIFIED" and applied == proposal_params:
@@ -80,7 +78,17 @@ def validate_decision(record, proposal_params: dict, before_params: dict, state_
             fatal.append("REJECTED but the model file changed")
         if applied_ok:
             fatal.append("REJECTED but set_parameters was called successfully")
-    else:
+    ev_applied = core.evaluate(applied, schema, brief)
+    if not ev_applied["hard_rules_pass"]:
+        if verdict == "REJECTED" and applied == before_params:
+            warnings.append("the kept current design breaks hard rules (" + ", ".join(ev_applied["failed_rules"])
+                            + "); REJECTED keeps it unchanged, as the brief allows for the as-built design")
+        else:
+            fatal.append("applied parameters break hard rules: " + ", ".join(ev_applied["failed_rules"]))
+    if verdict in ("ACCEPTED", "MODIFIED") and ev_applied["failed_goals"]:
+        warnings.append(f"{verdict} applied a design that still fails goals: " + ", ".join(ev_applied["failed_goals"])
+                        + " (a valid design has no failing goal; REJECTED was expected if none exists)")
+    if verdict != "REJECTED":
         if not applied_ok:
             fatal.append(f"{verdict} but set_parameters never succeeded")
         elif applied_ok[-1].get("output", {}).get("parameters") != applied:

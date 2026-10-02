@@ -60,12 +60,13 @@ closes. It is an aggregate number only; phones can never read votes.
 
 Parameters object (keys from `config/parameters.json`):
 ```json
-{ "facade_material": "timber", "window_ratio": 40, "roof_angle": 15, "canopy_depth": 1.5 }
+{ "infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12 }
 ```
 
 Metrics object (from `design_mcp/metrics.py`; all indicative):
 ```json
-{ "daylight": 67.5, "cooling": 52.3, "cost": 90.9, "carbon": 58.2, "shading": 0.349 }
+{ "daylight": 91.0, "cooling": 67.4, "cost": 48.0, "carbon": 30.0, "heritage": 97.0,
+  "shading": 0.162, "se_glass_m2": 382.8, "skylight_glass_m2": 359.3 }
 ```
 
 `decisions.metrics`:
@@ -79,19 +80,19 @@ applied now (equals `before` when REJECTED or failed).
 ```json
 {
   "session_id": "…", "round_id": "…", "round_number": 2,
-  "parameters": { "facade_material": "glass", "window_ratio": 45, "roof_angle": 15, "canopy_depth": 1.5 },
+  "parameters": { "infill_finish": "aluminium", "se_glass_share": 70, "fin_depth": 0, "skylights_open": 12 },
   "current_parameters": { … },
   "tally": {
-    "facade_material": { "type": "choice", "n": 38, "winner": "glass",
-      "counts": { "timber": 10, "concrete": 5, "glass": 23 },
-      "percentages": { "timber": 26.3, "concrete": 13.2, "glass": 60.5 },
-      "consensus": 0.605, "consensus_level": "moderate", "leading_options": ["glass"] },
-    "window_ratio": { "type": "slider", "n": 37, "median": 45,
-      "counts": { "20": 1, "25": 0, "30": 2, "35": 4, "40": 9, "45": 12, "50": 6, "55": 2, "60": 1 },
-      "min": 20, "max": 60, "q1": 40, "q3": 50,
+    "infill_finish": { "type": "choice", "n": 38, "winner": "aluminium",
+      "counts": { "concrete": 10, "aluminium": 23, "fritted_glass": 5 },
+      "percentages": { "concrete": 26.3, "aluminium": 60.5, "fritted_glass": 13.2 },
+      "consensus": 0.605, "consensus_level": "moderate", "leading_options": ["aluminium"] },
+    "se_glass_share": { "type": "slider", "n": 37, "median": 70,
+      "counts": { "40": 1, "50": 2, "60": 9, "70": 16, "80": 6, "90": 2, "100": 1 },
+      "min": 40, "max": 100, "q1": 60, "q3": 70,
       "consensus": 0.73, "consensus_level": "strong" }
   },
-  "participation": { "participants": 40, "votes": 150, "by_question": { "facade_material": 38, … } },
+  "participation": { "participants": 40, "votes": 150, "by_question": { "infill_finish": 38, … } },
   "previous_decisions": [
     { "round_number": 1, "status": "ok", "verdict": "ACCEPTED",
       "applied_parameters": { … }, "rationale": "…" }
@@ -103,9 +104,17 @@ A question with no votes has `"n": 0` and the proposal keeps the current value.
 
 `alternatives_considered`: `[{ "parameters": {…}, "metrics": {…}, "hard_rules_pass": true, "note": "…" }]`
 
-`changes`: `[{ "parameter": "window_ratio", "from": 20, "to": 25, "reason": "…" }]`
+`changes`: `[{ "parameter": "se_glass_share", "from": 40, "to": 50, "reason": "…" }]`
 
-`evidence`: `{ "proposal_metrics": {…}, "applied_metrics": {…}, "failed_rules": ["…"], "failed_goals": ["…"] }`
+`evidence`: `{ "proposal_metrics": {…}, "applied_metrics": {…}, "failed_rules": ["…"], "failed_goals": ["…"],
+"revit": {…} }`. `revit` (ACCEPTED/MODIFIED only, added by the orchestrator from the `set_parameters`
+result) is the compact Revit report:
+```json
+{ "applied": true, "ops": 47, "verified": true, "mismatches": [], "error": null,
+  "changes": { "panels_retyped": 14, "fins_deleted": 0, "fins_created": 30, "material": true }, "s": 6.2 }
+```
+When Revit was not reachable or another document was active: `{"applied": false, "error": "…"}`, and
+`decisions.message` says "Revit: not applied (…)". The phones and Rhino still follow the state file.
 
 ## Local API (served by `orchestrator.py run`, default port 8787)
 
@@ -118,7 +127,7 @@ Public (participants):
 - `GET /api/status` → the `session_status` row, or `null` if there is no active session
 - `GET /api/decisions/<id>` → one decision row
 - `POST /api/votes` with body
-  `{ "round_id": "…", "participant_id": "…", "votes": [ { "question_key": "window_ratio", "value": "45" }, … ] }`
+  `{ "round_id": "…", "participant_id": "…", "votes": [ { "question_key": "se_glass_share", "value": "70" }, … ] }`
   → `200 { "inserted": 4, "duplicates": 0 }`, `400 { "error": "invalid_value", "detail": "…" }`,
   `409 { "error": "round_closed" }`
 
@@ -158,7 +167,8 @@ Orchestrator: service role key over PostgREST (never in the browser).
 ## Reviewer-agent workflow steps (drive the 6-step progress bar)
 
 1. `get_project_brief` · 2. evaluate the proposal · 3. evaluate alternatives · 4. decide ·
-5. `set_parameters` · 6. verify (`get_parameters` / `evaluate` after applying)
+5. `set_parameters` (state file, then Revit; the orchestrator adds a `tool: "revit"` event with the
+report) · 6. verify (`get_parameters` / `evaluate` / `get_revit_state` after applying)
 
 `agent_events.step` holds the step number. The orchestrator writes a first event
 (`tool: "orchestrator"`, step 0: the tally) before the agent starts, and a final event

@@ -1,54 +1,59 @@
 {
-  "version": 1,
+  "version": 2,
+  "model": "langford_a",
   "parameters": [
     {
-      "key": "facade_material",
-      "label": "Façade material",
-      "question": "Which façade material?",
-      "explainer": "The skin of the pavilion: its fins and panels.",
+      "key": "infill_finish",
+      "label": "Solid panel finish",
+      "icon": "palette",
+      "question": "What finish for the solid façade panels?",
+      "explainer": "Every panel that is not clear glass gets this finish: bush-hammered concrete like the 1970s building, aluminium, or fritted (dotted) glass.",
       "type": "choice",
       "options": [
-        { "value": "timber", "label": "Timber", "icon": "trees" },
         { "value": "concrete", "label": "Concrete", "icon": "brick-wall" },
-        { "value": "glass", "label": "Glass", "icon": "panels-top-left" }
+        { "value": "aluminium", "label": "Aluminium", "icon": "layers" },
+        { "value": "fritted_glass", "label": "Fritted glass", "icon": "grid-3x3" }
       ],
-      "default": "timber"
+      "default": "concrete"
     },
     {
-      "key": "window_ratio",
-      "label": "Window ratio",
-      "question": "How much of the wall is window?",
-      "explainer": "Share of the façade that is glazing.",
+      "key": "se_glass_share",
+      "label": "SE studio glass",
+      "icon": "panels-top-left",
+      "question": "How much of the SE studio wall stays glass?",
+      "explainer": "Share of the 142 studio window panels facing the quad that stay clear glass. The rest become solid panels, starting at the edges of each bay.",
       "type": "slider",
-      "min": 20,
-      "max": 60,
-      "step": 5,
+      "min": 40,
+      "max": 100,
+      "step": 10,
       "unit": "%",
-      "default": 40
+      "default": 100
     },
     {
-      "key": "roof_angle",
-      "label": "Roof angle",
-      "question": "How steep is the roof?",
-      "explainer": "Pitch of the mono-pitch roof. Steeper roofs overhang more.",
+      "key": "fin_depth",
+      "label": "Sunshade fins",
+      "icon": "blinds",
+      "question": "How deep are the sunshade fins on the SE glass?",
+      "explainer": "30 new concrete fins on the SE studio windows, two per bay, against the low morning sun. 0 means no fins.",
       "type": "slider",
       "min": 0,
-      "max": 35,
-      "step": 5,
-      "unit": "°",
-      "default": 15
-    },
-    {
-      "key": "canopy_depth",
-      "label": "Canopy depth",
-      "question": "How deep is the entrance canopy?",
-      "explainer": "How far the canopy reaches out over the entrance.",
-      "type": "slider",
-      "min": 0,
-      "max": 3,
-      "step": 0.5,
+      "max": 1.2,
+      "step": 0.3,
       "unit": "m",
-      "default": 1.5
+      "default": 0
+    },
+    {
+      "key": "skylights_open",
+      "label": "Roof lanterns",
+      "icon": "sun",
+      "question": "How many of the 12 roof lanterns stay glazed?",
+      "explainer": "The north-light lanterns bring daylight into the top-floor studios. A closed lantern gets a solid panel.",
+      "type": "slider",
+      "min": 0,
+      "max": 12,
+      "step": 2,
+      "unit": "lanterns",
+      "default": 12
     }
   ]
 }

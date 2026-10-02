@@ -5,8 +5,15 @@
 
 Participants vote on design parameters from any device. A reviewer agent checks their collective
 proposal against a project brief and tests alternatives. It then decides to **ACCEPT**, **MODIFY** or
-**REJECT** it, with a transparent rationale based on evidence. It applies the result to a live
-parametric model (Rhino + Grasshopper) through MCP and verifies the change.
+**REJECT** it, with a transparent rationale based on evidence. It applies the result through MCP and
+verifies the change.
+
+**The building (v3, since 2026-10-01):** the retrofit of the studio façade of the real **Langford
+Architecture Center, Building A** (Texas A&M, College Station), an occupied 1970s brutalist
+architecture school. **Revit is the source of truth:** the AI changes real Revit elements in
+`revit/LangfordA_Plurarch.rvt` (panel types, the solid-panel material, new `PLX-FIN-*` fins). Rhino
+renders the same decision, and the phones show light geometry from the same model. The contract is
+`docs/LANGFORD.md`. The earlier generated pavilion is archived in `config/archive_pavilion/`.
 
 **The judgment principle:** the agent exercises real, auditable judgment, not blind execution.
 - Participants propose.
@@ -29,7 +36,7 @@ parametric model (Rhino + Grasshopper) through MCP and verifies the change.
 - **Session time:** VS Code does not need to be open. You start the orchestrator in a terminal. Each
   time a round closes, it tallies the votes and launches a fresh, **headless** Claude Code process
   as the reviewer agent.
-  - The agent sees exactly five tools (design-mcp) and nothing else: no shell, no files, no web, no
+  - The agent sees exactly six tools (design-mcp) and nothing else: no shell, no files, no web, no
     other MCP servers, no CLAUDE.md.
   - It returns a decision record, the orchestrator validates it, and the process exits.
 
@@ -39,17 +46,33 @@ phones ──votes──▶ backend (local server or Supabase) ◀──realtime
                         ▼
               orchestrator (your laptop) ──tally──▶ headless reviewer agent (Claude Code -p)
                         ▲                                   │ design-mcp tools only
-                        │ validate + write decision         ▼
-                        └────────────── state/parameters.json ──▶ Grasshopper rebuilds the model
+                        │ validate + write decision         ▼ set_parameters
+                        └────────────── state/parameters.json ──▶ Rhino render scene, phones, stage
+                                                            │
+                                                            └──▶ Revit (HTTP add-in, document guard):
+                                                                 revit/LangfordA_Plurarch.rvt
 ```
 
-## The model: one generator, projector and phones
+The four questions (`config/parameters.json`): the finish of the solid façade panels (concrete,
+aluminium, fritted glass), the share of the 142 SE studio window panels that stay clear glass
+(40–100 %), the depth of 30 new concrete sunshade fins on the SE glass (0–1.2 m), and how many of the
+12 north-light roof lanterns stay glazed (0–12). The defaults are the building as it stands.
 
-`site/js/model/pavilion.js` generates the pavilion from the four parameters, inside and out: about
-1,000 parts, 32 materials, question pins and tour stops. Its contract is `docs/MODEL.md`.
-- **Rhino** runs it through `node tools/pavilion_cli.mjs`, so the projector and the phones always
-  show the same building. If Node fails, Rhino falls back to a simpler built-in model.
-- **Phones** run it in the browser with three.js. Participants can:
+## The model: one building, one plan rule, three views
+
+- **Data:** `tools\langford_prep.py` (one-off, run with `C:\Python314\python.exe`) reads the P1
+  Revit-first source read-only and writes `config/langford/elements.json` (which real elements each
+  question controls) and the phone geometry `site/models/langford/base.json` + `base.bin`.
+- **The plan rule** (`design_mcp/langford_plan.py`, mirrored in `site/js/model/langford.js`, kept
+  equal by a parity test) turns parameters into the target state of those elements.
+- **Revit** (`design_mcp/revit_apply.py`): `set_parameters` diffs the plan against the Revit state,
+  applies only the changes in one transaction, reads back and verifies. It writes only when the active
+  document is `LangfordA_Plurarch` from this repo's `revit/` folder.
+- **Rhino** (`grasshopper/langford_builder.py`) applies the same plan to the render scene.
+- **Phones** (`site/js/model/langford.js`) re-tag panel materials and add fin boxes on the base
+  geometry. The pavilion generator (`site/js/model/pavilion.js`, `docs/MODEL.md`) is the archived v2.
+
+The phone viewer (v2 features, unchanged) lets participants:
   - rotate the textured model, or take the **Tour** through the interior (stops, swipe to look
     around, tap the floor to walk);
   - answer each question by tapping its **pin** on the façade, the windows, the roof or the canopy;
@@ -99,8 +122,8 @@ All commands are `.venv\Scripts\python.exe orchestrator\orchestrator.py <command
 | `status` | Session, rounds, votes, decisions, current model. |
 | `simulate --n 40 --profile consensus` | Fake votes into the open round. Profiles: `consensus`, `split`, `extreme`, `rule_violating`. Add `--open --close` for a complete round; `--over 15` spreads the votes over 15 s. |
 | `health-check` | A pass/fail report on every part of the loop. |
-| `test-agent [--profile P \| --proposal file]` | One reviewer run in a temporary state folder; the live model is untouched. |
-| `reset-session [--yes]` | Closes rounds, removes simulated votes, restores the default design, starts a fresh session. |
+| `test-agent [--profile P \| --proposal file]` | One reviewer run in a temporary state folder, with Revit off; the live model is untouched. |
+| `reset-session [--yes]` | Closes rounds, removes simulated votes, restores the default (as-built) design, re-applies it to the Revit copy (best effort, same document guard) and starts a fresh session. |
 
 Other tools:
 - `tools\make_qr.py <url>`: a QR code PNG with the URL underneath.
@@ -111,12 +134,18 @@ Other tools:
 
 The hierarchy, in strict order:
 1. **Hard rules**, deterministic and never overridable:
-   - window ratio ≥ 25%;
-   - a glass façade with ≥ 50% windows needs a shading fraction ≥ 0.35.
+   - SE studio glass ≥ 50 % (studio daylight and views);
+   - in College Station's climate, SE glass ≥ 80 % needs fins ≥ 0.6 m.
 2. **Brief goals** with thresholds:
-   - daylight ≥ 50, cooling ≤ 62, cost ≤ 100, carbon ≤ 90;
+   - studio daylight ≥ 70, cooling ≤ 68, retrofit cost ≤ 90, embodied carbon ≤ 70, heritage fit ≥ 70;
    - a goal missed by ≤ 3 points is *marginal*: a close trade-off, so the participants win.
 3. **Participant preference.**
+
+**The as-built premise:** the starting design is the building as it stands (concrete / 100 % glass /
+no fins / 12 lanterns). It fails the fins rule and overheats (cooling 73.0), which is why the retrofit
+is needed. A vote for it is MODIFIED with the minimum fins (0.6 m: cooling 67.4). REJECTED keeps the
+current design even when it is the non-compliant as-built, but only when nothing valid exists within
+the limits; the validator accepts that case with a warning.
 
 - **ACCEPTED:** it passes every rule and no goal fails. Applied as voted.
 - **MODIFIED:** the closest valid alternative. It changes at most 2 parameters, at most 3 slider
@@ -136,26 +165,37 @@ model file vs record, metrics recomputed. If anything fails, it restores the pre
 
 ## Metrics (indicative proxies, not simulations)
 
-Defined in `design_mcp/metrics.py`. Notation:
-- w = window ratio / 100; a = roof angle in degrees; d = canopy depth in m; S = shading fraction.
-- `heat_m`, `cost_m`, `carbon_m`, `light_m` are per-material factors: timber, concrete and glass
-  have different heat gain, cost and embodied carbon.
+Defined in `design_mcp/metrics.py`, computed on the **real panel areas** of the Revit model
+(`config/langford/elements.json`): 142 SE lites (382.8 m²), 12 lanterns (359.3 m² of glazing), 30 fin
+anchors at 3.77 m spacing. Which panels are glass for a given share comes from the plan rule.
+Notation (all 0..1):
+- g = glazed SE area / 382.8; g_fin = glazed SE area in the finned bays / 382.8; s_se = 1 − g;
+- k = open lantern glazing / 359.3; s_sky = 1 − k; n_closed = closed lanterns; d = fin depth (m);
+- F = fin shading fraction: the share of the hot-season beam sun on the finned SE glass that the fins
+  block. For May–September in College Station (30.6° N), every 30 min while the sun is in front of the
+  façade (azimuth 140.65°), the fins shade min(1, d·|tan γ| / 3.77) of the glass width (γ = the
+  horizontal sun angle to the façade normal), weighted by clear-sky beam irradiance on the façade.
+  F = 0.08 / 0.16 / 0.24 / 0.32 for d = 0.3 / 0.6 / 0.9 / 1.2 m.
 
 | Metric | Formula |
 |---|---|
-| Shading fraction S | min(0.6, 0.12 + 0.005·a + 0.256·min(1, d/2.5)) |
-| Daylight (higher is better) | 100·(1 − e^(−3.2·(w·(1 − 0.35·S) + light_m))) |
-| Cooling load (lower is better) | 20 + 110·w·(1 − S) + 40·(1 − w)·heat_m |
-| Cost (budget 100) | 25 + 40·((1 − w)·cost_m + 1.3·w) + 12·(1 + 0.6·a/35) + 4·d |
-| Embodied carbon | 20 + 40·((1 − w)·carbon_m + 0.9·w) + 10·(1 + 0.5·a/35) + 3·d |
+| Studio daylight (higher is better) | 100·(1 − e^(−a)), a = 1.9·(g − 0.30·F·g_fin) + 0.6·k + light_f·(1.9·s_se + 0.6·s_sky) |
+| Cooling load (lower is better) | 28 + 36·(g − F·g_fin) + 9·k + heat_f·(s_se + 0.6·s_sky) |
+| Retrofit cost (budget 90) | 35 + 26·d/1.2 + cost_f·(40·s_se + 20·s_sky) |
+| Embodied carbon | 15 + 30·d/1.2 + carbon_f·(40·s_se + 20·s_sky) |
+| Heritage fit (higher is better) | 100 − (base_f + per_f·s_se) − 22·s_se − 2.2·n_closed − 6·d/1.2 |
 
-Material factors:
+Finish factors for the solid panels:
 
-| | heat_m | cost_m | carbon_m | light_m |
-|---|---|---|---|---|
-| timber | 0.15 | 1.00 | 0.30 | 0 |
-| concrete | 0.20 | 0.80 | 1.40 | 0 |
-| glass | 0.55 | 1.20 | 1.00 | 0.03 |
+| | heat_f | light_f | cost_f | carbon_f | heritage base_f, per_f |
+|---|---|---|---|---|---|
+| concrete | 3 | 0 | 1.00 | 1.00 | 0, 0 |
+| aluminium | 9 | 0 | 1.45 | 1.90 | 18, 25 |
+| fritted glass | 16 | 0.40 | 1.25 | 1.15 | 4, 8 |
+
+Reference values: as built 91.8 / 73.0 / 35.0 / 15.0 / 100.0 (daylight / cooling / cost / carbon /
+heritage); with the minimum fins (0.6 m) 91.0 / 67.4 / 48.0 / 30.0 / 97.0.
+The metrics also report `shading` (F), `se_glass_m2` and `skylight_glass_m2`.
 
 ## Rehearsal checklist
 1. `health-check` passes.
@@ -163,10 +203,11 @@ Material factors:
 3. `run` is going in a terminal with a large font, placed next to the console.
 4. Log in to the console, switch projection mode on, and read it from the back of the room.
 5. Simulate three rounds in a row:
-   - `simulate --profile consensus --open --close` → expect ACCEPTED;
-   - `simulate --profile rule_violating --open --close` → expect MODIFIED;
-   - `simulate --profile extreme --open --close` → expect REJECTED.
-   The model should change for the first two.
+   - `simulate --profile consensus --open --close` (concrete, 90 %, 0.6 m, 12) → expect ACCEPTED;
+   - `simulate --profile rule_violating --open --close` (100 % glass, 0.3 m fins) → expect MODIFIED;
+   - `simulate --profile split --open --close` (aluminium by a weak plurality) → expect MODIFIED;
+   - `simulate --profile extreme --open --close` (aluminium, 40 %, no fins, no lanterns) → expect REJECTED.
+   The model should change for the first three, in Revit too (check `PLX-FIN-*` and the panels).
 6. Scan the QR code with two or three real phones, vote in a real round, and check that each phone
    shows the decision card.
 7. Stop `run` in the middle of a round, restart it, and check that no round is processed twice.
@@ -197,15 +238,20 @@ Material factors:
 | A round was never reviewed | Is `run` running? `status` shows rounds that are closed but not processed; `run` picks them up on start. |
 | Supabase project paused | Dashboard → the project → "Restore project", and wait about 2 minutes. |
 | Wrong verdict tendencies | Tune the numbers in `config/project_brief.json`, then run `tests\judgment\run_judgment.py`. |
+| Decision says "Revit: not applied (…)" | Revit is closed, or another document is active. Open `revit/LangfordA_Plurarch.rvt` and make it the active document; the next decision catches up (the apply is idempotent). `health-check` shows the Revit line. Set `"revit_required": true` in `config/local.json` to refuse decisions instead. |
+| Revit shows fins without a Mark | A fin-mark step was interrupted. The next apply replaces those fins. |
 
 ## Repository map
-- `config/`: parameters, brief and use-case profiles (the single source of truth).
-- `design_mcp/`: the MCP server, metrics and the deterministic core.
+- `config/`: parameters, brief and use-case profiles (the single source of truth);
+  `config/langford/elements.json` (generated); `config/archive_pavilion/` (the v2 pavilion).
+- `design_mcp/`: the MCP server, metrics, the deterministic core, the Langford plan rule
+  (`langford_plan.py`), the Revit applier (`revit_apply.py`) and its client (`revit_client.py`).
+- `revit/`: the Revit copy the AI changes. `rhino/`: the Rhino render scene.
 - `agent/`: the system prompt and decision schema.
 - `orchestrator/`: the run loop, tally, agent runner, validation, and the local and Supabase backends.
 - `site/`: the participant app and the facilitator console (no build step).
 - `supabase/`: schema, RLS and setup steps.
 - `grasshopper/`: the model builder and setup steps.
-- `tools/`: setup, QR code and load test.
+- `tools/`: setup, QR code, load test and the Langford data prep (`langford_prep.py`).
 - `tests/`: unit tests, the RLS tests and the judgment suite.
 - `docs/ARCHITECTURE.md`: the data contract. `PROGRESS.md`: the progress log.

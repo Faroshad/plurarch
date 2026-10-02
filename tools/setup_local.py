@@ -73,6 +73,8 @@ def main() -> None:
         "backend": "local",
         "local_port": 8787,
         "use_case": "live_presentation",
+        "revit_apply": True,        # set_parameters also applies the decision to revit/LangfordA_Plurarch.rvt
+        "revit_required": False,    # True: set_parameters refuses when Revit is not reachable or not on that file
     }
     node = find_node()
     if node:

@@ -32,6 +32,12 @@
 //   v.ready                            // Promise<boolean>
 //
 // Coordinates: models are Z-up (Rhino); three.js is Y-up. model (x, y, z) -> three (x, z, -y).
+// Optional Model fields used here: camera { theta, phi, target?: [x, y, z], portrait_fit_x? } (orbit home:
+// direction, aim point, and how far a long building may overflow the sides of a portrait screen,
+// 1 = fits), tour_start (stop id),
+// ground { z } (outer ground level), walkable.obstacles [[x0, y0, x1, y1]] and walkable.heightAt(x, y)
+// (an exterior walk on terrain), pins[].look [dx, dy] (the side focus() views the element from).
+// Parts may be triangle meshes ({ tri }, see viewer/meshdata.js).
 
 import { buildMeshData, tagMatcher, rayFirstHit, TILE_M } from './viewer/meshdata.js';
 import { drawTexture, drawBlobShadow } from './viewer/textures.js';
@@ -130,7 +136,7 @@ function checkSvg() {
 export function createViewer(container, options = {}) {
   const o = {
     onPinTap() {}, onReady() {}, onFallback() {}, onModeChange() {}, onStopChange() {},
-    questionTags: null, quality: 'auto', canvasLabel: '3D model of the pavilion', insetTop: 0, tourHint: true,
+    questionTags: null, quality: 'auto', canvasLabel: '3D model of the building', insetTop: 0, tourHint: true,
     ...options,
   };
   const qOf = tagMatcher(o.questionTags || {});
@@ -167,7 +173,8 @@ export function createViewer(container, options = {}) {
 
   let disposed = false; let failed = false; let isReady = false;
   let model = null; let pending = null; let firstModel = true;
-  let occ = null; let obstacles = new Float32Array(0); let footprint = null; let walkable = null; let stops = []; let floorZ = 0.3;
+  let occ = null; let obstacles = new Float32Array(0); let footprint = null;
+  let heightAt = null; let tourStart = null; let homeView = null; let hasInteriorPins = true; let walkable = null; let stops = []; let floorZ = 0.3;
   const pinCands = new Map(); // question -> { exterior: [{pos, nrm, occ}], interior: [...] }
   const pinEls = new Map(); // question -> element record
   let pinList = [];
@@ -184,6 +191,7 @@ export function createViewer(container, options = {}) {
   let viewW = 0; let viewH = 0;
   let visible = true;
   let raf = 0; let needFrames = 0; let frameNo = 0; let lastFrameAt = 0; let lastRenderAt = 0;
+  let prevActive = false; // the previous frame asked for this one (an animation, a drag)
   let occDirty = true; let sizesDirty = true;
   let contextLost = false; let lostTimer = null;
   const st = { tex: {}, renders: 0, buildMs: 0, meshMs: 0, uploadMs: 0, texMs: 0, parts: 0, tris: 0, calls: 0, cpuMs: 0, frameMsMedian: 0, tierChanges: 0, loadMs: 0, compileMs: 0 };
@@ -541,7 +549,13 @@ export function createViewer(container, options = {}) {
       seen.add(g.key);
       const def = mats[g.key] || { kind: 'plaster', color: [200, 200, 200], opacity: 1, roughness: 0.9, metalness: 0 };
       const mat = materialFor(g.key, def);
+      const old = meshes.get(g.key);
+      if (old && old.geometry.userData.src === g.position) { // unchanged group: keep its GPU buffers
+        old.material = mat;
+        continue;
+      }
       const geo = new T.BufferGeometry();
+      geo.userData.src = g.position;
       geo.setAttribute('position', new T.BufferAttribute(g.position, 3));
       geo.setAttribute('normal', new T.BufferAttribute(g.normal, 3));
       geo.setAttribute('uv', new T.BufferAttribute(g.uv, 2));
@@ -575,13 +589,27 @@ export function createViewer(container, options = {}) {
       setGroundColor(srgb(groundDef.color));
       groundMesh.material.roughness = Number.isFinite(groundDef.roughness) ? clamp(groundDef.roughness, 0.3, 1) : 1;
     }
-    groundMesh.position.y = data.groundZ != null ? data.groundZ : Math.min(0, data.footprint.min[2]) - 0.002;
+    groundMesh.position.y = m.ground && Number.isFinite(m.ground.z) ? m.ground.z - 0.02
+      : data.groundZ != null ? data.groundZ : Math.min(0, data.footprint.min[2]) - 0.002;
 
     model = m;
     occ = data.occ;
-    obstacles = data.obstacles;
     footprint = data.footprint;
     const wk = m.walkable;
+    const extra = wk && Array.isArray(wk.obstacles) ? wk.obstacles.filter((r) => Array.isArray(r) && r.length >= 4 && r.every(Number.isFinite)) : [];
+    if (extra.length) {
+      const all = new Float32Array(data.obstacles.length + extra.length * 4);
+      all.set(data.obstacles);
+      extra.forEach((r, i) => all.set([Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.max(r[0], r[2]), Math.max(r[1], r[3])], data.obstacles.length + i * 4));
+      obstacles = all;
+    } else obstacles = data.obstacles;
+    heightAt = wk && typeof wk.heightAt === 'function' ? wk.heightAt : null;
+    tourStart = typeof m.tour_start === 'string' ? m.tour_start : null;
+    homeView = m.camera && Number.isFinite(m.camera.theta) && Number.isFinite(m.camera.phi) ? {
+      theta: m.camera.theta, phi: m.camera.phi,
+      target: Array.isArray(m.camera.target) && m.camera.target.length === 3 && m.camera.target.every(Number.isFinite) ? m.camera.target.slice() : null,
+      fitX: Number.isFinite(m.camera.portrait_fit_x) ? clamp(m.camera.portrait_fit_x, 1, 3) : 1,
+    } : null;
     walkable = wk && Array.isArray(wk.min) && Array.isArray(wk.max) ? {
       min: [Math.min(wk.min[0], wk.max[0]), Math.min(wk.min[1], wk.max[1])],
       max: [Math.max(wk.min[0], wk.max[0]), Math.max(wk.min[1], wk.max[1])],
@@ -604,11 +632,18 @@ export function createViewer(container, options = {}) {
       // visibility is tested at a point 0.7 m in front of the element (where the pin's stem is),
       // so a pin on glass behind fins or mullions still shows when its surroundings are in view
       const probe = [p.pos[0] + (nm[0] / nl) * 0.7, p.pos[1] + (nm[1] / nl) * 0.7, p.pos[2] + (nm[2] / nl) * 0.7];
-      c[md].push({ pos: toThree(p.pos, new T.Vector3()), nrm, model: probe, occ: false });
+      // optional pin.look [dx, dy(, dz)]: the side the element is best seen from (north-light lanterns
+      // face away from the entrance); focus() turns the camera there instead of along the normal
+      let look = null;
+      if (Array.isArray(p.look) && p.look.length >= 2 && Number.isFinite(p.look[0]) && Number.isFinite(p.look[1]) && Math.hypot(p.look[0], p.look[1]) > 1e-6) {
+        look = toThree([p.look[0], p.look[1], 0], new T.Vector3()).normalize();
+      }
+      c[md].push({ pos: toThree(p.pos, new T.Vector3()), nrm, look, model: probe, occ: false });
     }
     stops = (Array.isArray(m.tour) ? m.tour : [])
       .filter((s) => s && validP3(s.eye) && validP3(s.target))
       .map((s, i) => ({ id: String(s.id || 'stop' + i), label: String(s.label || s.id || 'Stop ' + (i + 1)), eye: s.eye.slice(0, 3), target: s.target.slice(0, 3) }));
+    hasInteriorPins = [...pinCands.values()].some((c) => c.interior.length > 0);
     for (const item of pinList) { const rec = pinEls.get(item.question); if (rec) renderPinContent(rec, item); } // labels from the model
     buildStopsUI();
     buildRings();
@@ -658,7 +693,7 @@ export function createViewer(container, options = {}) {
   }
 
   // Distance at which the footprint box fits the frame for a view direction.
-  function fitDistance(target, theta, phi, margin, fov) {
+  function fitDistance(target, theta, phi, margin, fov, marginX = margin) {
     const fp = footprint;
     const pts = [];
     for (let i = 0; i < 8; i++) {
@@ -678,7 +713,7 @@ export function createViewer(container, options = {}) {
       let fits = true;
       for (const p of pts) {
         tmpV.copy(p).project(cam);
-        if (tmpV.z > 1 || Math.abs(tmpV.x) > margin || Math.abs(tmpV.y) > margin) { fits = false; break; }
+        if (tmpV.z > 1 || Math.abs(tmpV.x) > marginX || Math.abs(tmpV.y) > margin) { fits = false; break; }
       }
       if (fits) hi = d; else lo = d;
     }
@@ -691,16 +726,22 @@ export function createViewer(container, options = {}) {
     // Aim at mid-height and look down about 27 degrees: on a tall phone screen this fills the
     // height with the building and shows the roof (a question), instead of empty sky above it.
     const zc = fp.min[2] + (fp.max[2] - fp.min[2]) * 0.32;
-    const target = new T.Vector3(cx, zc, -cy);
-    const phi = 1.1;
+    const target = homeView && homeView.target ? toThree(homeView.target, new T.Vector3()) : new T.Vector3(cx, zc, -cy);
+    const phi = homeView ? homeView.phi : 1.1;
+    // a long building on a portrait screen: let its ends run off the sides rather than shrink it
+    const fitX = homeView && homeView.fitX > 1 && viewW > 0 && viewW < viewH ? homeView.fitX : 1.0;
     // Three-quarter views from the entrance side; keep the one that shows the most exterior pins.
-    let theta = -0.66; let dist = fitDistance(target, theta, phi, 1.0, ORBIT_FOV); let bestSeen = -1;
-    for (const th of [-0.66, 0.66, -0.95, 0.95, -0.4, 0.4]) {
+    let theta = homeView ? homeView.theta : -0.66;
+    let dist = fitDistance(target, theta, phi, 1.0, ORBIT_FOV, fitX); let bestSeen = homeView ? Infinity : -1;
+    for (const th of homeView ? [] : [-0.66, 0.66, -0.95, 0.95, -0.4, 0.4]) {
       const d = th === -0.66 ? dist : fitDistance(target, th, phi, 1.0, ORBIT_FOV);
       const seen = visiblePinsFrom(tmpV.setFromSphericalCoords(d, phi, th).add(target));
       if (seen > bestSeen) { bestSeen = seen; theta = th; dist = d; }
     }
     orbitHome = { target, theta, phi, dist };
+    // fog starts beyond the building at any scale (a pavilion or a five-storey building)
+    scene.fog.near = clamp(dist * 1.5, 90, 260);
+    scene.fog.far = clamp(dist * 4.5, 340, 500);
     controls.minDistance = Math.max(3, dist * 0.3);
     controls.maxDistance = dist * 2.2;
     if (!keep) orbitSaved = null;
@@ -808,6 +849,7 @@ export function createViewer(container, options = {}) {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     lastFrameAt = 0;
+    prevActive = false;
   }
 
   function idleActive(t) {
@@ -823,8 +865,12 @@ export function createViewer(container, options = {}) {
   function frame(t) {
     raf = 0;
     if (!canRender()) return;
-    const consecutive = lastFrameAt > 0 && t - lastFrameAt < 120;
-    const dt = consecutive ? (t - lastFrameAt) / 1000 : 1 / 60;
+    const gap = lastFrameAt > 0 ? t - lastFrameAt : Infinity;
+    const consecutive = gap < 120;
+    // a very slow device (frames 120-1000 ms apart) must still reach the watchdog, else it never
+    // steps down; only frames chained to an active one count, so a pause in a drag is not a "slow frame"
+    const chained = prevActive && gap < 1000;
+    const dt = consecutive ? gap / 1000 : 1 / 60;
     lastFrameAt = t;
     if (pending) {
       const p = pending; pending = null;
@@ -859,7 +905,8 @@ export function createViewer(container, options = {}) {
     frameNo++;
     updatePins(active || idleOnly);
     if (needFrames > 0) needFrames--;
-    watchdog(dt, consecutive && !idleOnly && (active || needFrames > 0));
+    watchdog(gap / 1000, (consecutive || chained) && !idleOnly && (active || needFrames > 0));
+    prevActive = !idleOnly && (active || needFrames > 0);
     if (active || idleOnly || needFrames > 0 || pending) schedule();
     else if (occDirty) { occDirty = false; invalidate(1); }
   }
@@ -1072,7 +1119,7 @@ export function createViewer(container, options = {}) {
     if (!stops.length) return false;
     beginTourMode();
     const back = tour.stopId && stopById(tour.stopId);
-    const first = back || firstInteriorStop();
+    const first = back || (tourStart && stopById(tourStart)) || firstInteriorStop();
     const approach = stopById('approach') || stops.find((s) => walkable && !(s.eye[0] > walkable.min[0] && s.eye[0] < walkable.max[0] && s.eye[1] > walkable.min[1] && s.eye[1] < walkable.max[1]));
     if (!back && approach && approach !== first && !reducedMotion()) {
       flyToStop(approach, 1300, () => { setTimeout(() => { if (mode === 'tour' && !tween && tour.stopId === approach.id) flyToStop(first, 1400); }, 250); });
@@ -1130,7 +1177,8 @@ export function createViewer(container, options = {}) {
     }
     for (const s of stops) {
       const inside = walkable && s.eye[0] > walkable.min[0] - 0.3 && s.eye[0] < walkable.max[0] + 0.3 && s.eye[1] > walkable.min[1] - 0.3 && s.eye[1] < walkable.max[1] + 0.3;
-      const fz = inside ? floorZ : Math.max(footprint.min[2] - 0.3, s.eye[2] - EYE_H);
+      const fz = heightAt ? heightAt(s.eye[0], s.eye[1]) : inside ? floorZ : Math.max(footprint.min[2] - 0.3, s.eye[2] - EYE_H);
+      if (s.eye[2] - fz > EYE_H + 1.5) continue; // a raised viewpoint: no floor ring
       const g = new T.Group();
       const ring = new T.Mesh(new T.RingGeometry(0.34, 0.46, 48).rotateX(-Math.PI / 2), buildRings.mat);
       const disc = new T.Mesh(new T.CircleGeometry(0.34, 32).rotateX(-Math.PI / 2), buildRings.disc);
@@ -1268,7 +1316,7 @@ export function createViewer(container, options = {}) {
     const free = freeSpot(px, py, ox, oy);
     if (!free) return;
     px = free[0]; py = free[1];
-    const to = new T.Vector3(px, floorZ + EYE_H, -py);
+    const to = new T.Vector3(px, (heightAt ? heightAt(px, py) : floorZ) + EYE_H, -py); // walk on the terrain when there is one
     const dist = to.distanceTo(eye);
     if (dist < 0.3) return;
     tween = {
@@ -1319,6 +1367,7 @@ export function createViewer(container, options = {}) {
   function pinSet() {
     if (tween && tween.kind === 'fly') return null;
     if (mode === 'orbit') return 'exterior';
+    if (!hasInteriorPins) return 'exterior';
     return eyeInside(camera.position) ? 'interior' : 'exterior';
   }
 
@@ -1545,18 +1594,19 @@ export function createViewer(container, options = {}) {
         const f = x.nrm.dot(tmpV2);
         if (f > bestF) { bestF = f; cd = x; }
       }
-      const hn = Math.hypot(cd.nrm.x, cd.nrm.z);
+      const hd = cd.look || cd.nrm;
+      const hn = Math.hypot(hd.x, hd.z);
       const cur = tmpV.copy(camera.position).sub(controls.target);
       const dist = clamp(cur.length(), controls.minDistance, orbitHome.dist * 1.05);
       let theta = Math.atan2(cur.x, cur.z);
       let phi = Math.acos(clamp(cur.y / (cur.length() || 1), -1, 1));
       if (hn > 0.3) {
-        const want = Math.atan2(cd.nrm.x, cd.nrm.z);
-        // turn toward the element, but keep a three-quarter view (35 degrees off its normal)
+        const want = Math.atan2(hd.x, hd.z);
+        // turn toward the element, but keep a three-quarter view (35 degrees off its normal; 20 off a look)
         let dth = want - theta;
         while (dth > Math.PI) dth -= 2 * Math.PI;
         while (dth < -Math.PI) dth += 2 * Math.PI;
-        const off = 0.6;
+        const off = cd.look ? 0.35 : 0.6;
         if (Math.abs(dth) > off) theta += dth - Math.sign(dth) * off;
       }
       if (cd.nrm.y > 0.5) phi = Math.min(phi, 0.95); else phi = clamp(phi, 1.0, 1.32);

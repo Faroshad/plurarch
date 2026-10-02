@@ -2,7 +2,7 @@
 // submits all answers in one call, and shows the decision. No realtime connection is ever opened here.
 //
 // Two layouts share one state and one draft:
-//   - 3D (default, made for a 5-minute live demo): the pavilion model fills the whole screen
+//   - 3D (default, made for a 5-minute live demo): the building (Langford A) fills the whole screen
 //     (js/viewer3d.js, three.js loaded lazily) and the page never scrolls. On top: a small wordmark,
 //     ONE status pill (live / "37 voting · 0:42" / voted / AI reviewing / the verdict chip) and (i);
 //     at the bottom: Orbit/Tour and one guided button ("Next question · 3/4", then "Submit vote").
@@ -48,7 +48,7 @@ const S = {
   v3d: {
     status: 'idle', // idle | loading | ready | failed
     viewer: null,
-    mod: null, // the pavilion model module (buildPavilion, QUESTION_TAGS)
+    mod: null, // the model module (js/model/langford.js: buildLangford, QUESTION_TAGS)
     pref: sessionStore.get(VIEW_KEY) === 'list' ? 'list' : '3d',
     mode: 'orbit', // orbit | tour
     sheetKey: null, // question open in the sheet
@@ -77,7 +77,7 @@ const dom = {
 
 const DRAFT_KEY = 'plurarch:draft';
 const PID_KEY = 'plurarch:participant_id';
-const DESIGN_IMG = 'img/initial-design.svg';
+const DESIGN_IMG = 'img/langford-a.jpg'; // a render of the 3D model (the initial design)
 
 /* ------------------------------------------------------------------ helpers */
 function participantId() {
@@ -153,9 +153,9 @@ function designTile(caption) {
   return el('figure', { class: 'design-tile', style: { margin: '0' } },
     el('img', {
       src: DESIGN_IMG, width: 1064, height: 524, decoding: 'async',
-      alt: 'Drawing of the pavilion: a one-room box with a mono-pitch roof, vertical façade fins, a glazing band and an entrance canopy.',
+      alt: 'Langford Architecture Center, Building A, from the south-east quad: a long concrete building with a glazed south-east façade and a row of roof lanterns.',
     }),
-    el('figcaption', { class: 'design-caption', text: caption || 'The pavilion · initial design' }),
+    el('figcaption', { class: 'design-caption', text: caption || 'Langford A · initial design' }),
   );
 }
 
@@ -660,9 +660,9 @@ function buildStage() {
   stage.poster = el('div', { class: 'p-stage-poster', 'aria-hidden': 'true' },
     el('img', { src: DESIGN_IMG, alt: '', width: 1064, height: 524, decoding: 'async' }),
     el('span', { class: 'p-stage-loading' }, icon('loader-circle', 16, 'spin'), 'Loading 3D…'));
-  stage.modeSeg = segControl('View', [['orbit', 'Orbit', 'Orbit: turn the model'], ['tour', 'Tour', 'Tour: walk inside']], () => S.v3d.mode, onModeSeg);
+  stage.modeSeg = segControl('View', [['orbit', 'Orbit', 'Orbit: turn the model'], ['tour', 'Tour', 'Tour: walk around the building']], () => S.v3d.mode, onModeSeg);
   stage.modeSeg.setDisabled(S.v3d.status !== 'ready');
-  stage.root = el('section', { class: 'p-stage', 'aria-label': 'The pavilion in 3D' }, stage.poster, stage.host);
+  stage.root = el('section', { class: 'p-stage', 'aria-label': 'Langford A in 3D' }, stage.poster, stage.host);
   return stage.root;
 }
 
@@ -672,15 +672,22 @@ function ensureViewer() {
   if (URLQ.get('v3d') === '0') { v.status = 'failed'; return; }
   buildStage();
   v.status = 'loading';
-  Promise.all([import('./viewer3d.js'), import('./model/pavilion.js')]).then(([vm, pm]) => {
+  // The real building (Langford A, js/model/langford.js): its base geometry is fetched and decoded
+  // once; a failure here (network, decode) falls back to the list view like a WebGL failure.
+  Promise.all([import('./viewer3d.js'), import('./model/langford.js').then((pm) => pm.loadLangford().then(() => pm))]).then(([vm, pm]) => {
     if (v.status !== 'loading') return;
     v.mod = pm;
+    v.build = pm.buildLangford;
+    try {
+      v.pinLabels = {};
+      for (const p of pm.buildLangford({}).pins || []) if (p && p.label && !v.pinLabels[p.question]) v.pinLabels[p.question] = String(p.label);
+    } catch (_) { v.pinLabels = null; }
     const q = URLQ.get('q');
     v.viewer = vm.createViewer(stage.host, {
       questionTags: pm.QUESTION_TAGS,
       quality: q != null && /^[0-2]$/.test(q) ? Number(q) : 'auto',
       tourHint: false,
-      canvasLabel: '3D model of the pavilion. Drag to turn it, pinch to zoom, drag with two fingers to move. The pins mark the questions.',
+      canvasLabel: '3D model of Langford Architecture Center, Building A. Drag to turn it, pinch to zoom, drag with two fingers to move. The pins mark the questions.',
       onPinTap,
       onReady: onViewerReady,
       onFallback: viewerFailed,
@@ -799,7 +806,7 @@ function modelFor(params) {
   const key = JSON.stringify(params);
   let m = v.cache.get(key);
   if (!m) {
-    m = v.mod.buildPavilion(params);
+    m = v.build(params);
     v.cache.set(key, m);
     if (v.cache.size > 6) v.cache.delete(v.cache.keys().next().value);
   }
@@ -824,7 +831,7 @@ function syncStage() {
   if (!modelRaf) {
     modelRaf = requestAnimationFrame(() => {
       modelRaf = 0;
-      if (!v.viewer || !modelParams || !v.mod) return;
+      if (!v.viewer || !modelParams || !v.build) return;
       try {
         const { key, model } = modelFor(modelParams);
         if (key !== v.modelKey) {
@@ -866,7 +873,10 @@ function countdownText() {
   return left > 0 ? fmtClock(Math.min(left, dur)) : 'closing…';
 }
 
-const shortLabel = (p) => String(p.label).split(' ')[0];
+// short names for the verdict chip and the reveal: the model's pin label (Glass, Fins, ...) when the 3D
+// model is loaded, else the first word of the question label
+const shortLabel = (p) => (S.v3d.pinLabels && S.v3d.pinLabels[p.key]) || String(p.label).split(' ')[0];
+const chipWord = (w) => (w.length > 1 && w === w.toUpperCase() ? w : w.toLowerCase()); // keep 'SE'
 const bareValue = (p, v) => (p.type === 'slider' ? fmtSliderNumber(p, v) : fmtParamValue(p, v));
 
 function firstChange(d) {
@@ -879,7 +889,7 @@ function decisionShort(d) {
   if (!v) return 'no change';
   if (v === 'REJECTED') return 'kept';
   const ch = firstChange(d);
-  return v === 'MODIFIED' && ch ? `${shortLabel(ch.param).toLowerCase()} ${ch.appliedText}` : 'as voted';
+  return v === 'MODIFIED' && ch ? `${chipWord(shortLabel(ch.param))} ${ch.appliedText}` : 'as voted';
 }
 
 function statusParts(view, problem) {
