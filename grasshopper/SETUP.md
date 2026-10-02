@@ -1,8 +1,87 @@
 # Plurarch in Grasshopper: setup
 
-The live model is a Grasshopper "Python 3 Script" component. It watches
-`state\parameters.json` (written by the design server) and rebuilds the pavilion
-whenever the approved parameters change. The code is in `grasshopper\model_builder.py`.
+The live model is a Grasshopper "Python 3 Script" component (**PlurarchModel**). It watches
+`state\parameters.json` (written by the design server) and updates the model whenever the
+approved parameters change. The same loader component runs one of two scripts:
+
+| Model | Script (`_MB` in the loader) | Rhino document |
+|---|---|---|
+| **Langford A** (current, real building) | `grasshopper\langford_builder.py` | `rhino\LangfordA_Plurarch_render.3dm` |
+| Pavilion (previous, generated) | `grasshopper\model_builder.py` | any; the pavilion is a Grasshopper preview |
+
+---
+
+## Langford A (current)
+
+`langford_builder.py` applies the plan rule of `docs\LANGFORD.md` to the **real objects of the
+render scene**. They are IFC meshes, and each one carries its Revit element id in its user text
+(`RevitElementId`). It does not draw a Grasshopper preview: it changes the document itself, so
+Rendered, Raytraced and Cycles all show the result.
+
+| Question | What changes in Rhino |
+|---|---|
+| `infill_finish` | Material of every solid infill panel: the 14 penthouse louvre panels, plus every SE lite and lantern panel that is solid. concrete = the scene's *ARCA bush-hammered concrete* (with its 2.4 m box mapping); aluminium = *PLX brushed aluminium (Plurarch infill)*; fritted_glass = *PLX fritted glass (Plurarch infill)*. The last two are created on first use. |
+| `se_glass_share` | The first round(share/100 × 142) SE lites by rank keep their glass; the others get the infill finish. |
+| `skylights_open` | The first n lanterns by index keep their glass; the glazing of the others gets the infill finish. |
+| `fin_depth` | 30 concrete fin breps (0.2 m × depth × floor-to-window-head) on layer `Plurarch::Fins`, one per anchor, replaced when the depth changes. None at 0. |
+
+- The first time an object is changed, its original material is saved in its user text
+  (`PLX_orig_material`). Turning it back to glass restores exactly that material.
+- Only objects whose material differs from the plan are written, so it is idempotent. Timer
+  ticks with no change cost almost nothing.
+- **Document guard:** it only edits a saved document inside this repo's `rhino\` folder, and
+  never anything in `LangfordA_Fresh`. With any other document open, `warning` says
+  *Not applied: ...* and nothing is touched.
+- The element ids and the fin anchors come from `config\langford\elements.json` (Revit model
+  metres). The Rhino scene is that frame rotated +39.35° about Z at the origin (`to_rhino`).
+
+### Switch the component to Langford
+1. Open `rhino\LangfordA_Plurarch_render.3dm` in Rhino 8 (it is large; give it a minute),
+   then type `Grasshopper` and open `grasshopper\plurarch.gh`.
+2. Double-click **PlurarchModel**. In the loader, change the `_MB` line to
+   `_MB = r"E:\Academic\PhD\Fall 2026\AI Workshop\PlurARCH\grasshopper\langford_builder.py"`
+   and click **Run**. Nothing else in the loader changes.
+3. `info` should read *PLURARCH Langford A - design from file*, with the scene line
+   *LangfordA_Plurarch_render.3dm (324 element ids -> N objects)*.
+4. The Custom Preview now receives empty lists; you can leave it.
+5. Use the Rendered display mode (or Raytraced for stills) and the named view **Plurarch**,
+   the SE quad three-quarter view. Keep the Grasshopper window open; it may be minimised.
+
+To go back to the pavilion, set `_MB` back to `model_builder.py`. The Langford changes stay in
+the 3dm until the Langford builder runs again.
+
+### Test designs (never edit the live parameters.json)
+Four ready-made files are in `state\`. Point the **StatePath** Panel at one, look, and then
+**set StatePath back to `...\state\parameters.json`**:
+
+| File | Design |
+|---|---|
+| `test_langford_1_asbuilt.json` | concrete, 100 %, fins 0, 12 skylights (as built) |
+| `test_langford_2_glass50_fins12.json` | concrete, 50 % SE glass, fins 1.2 m, 12 skylights |
+| `test_langford_3_sky4_fritted.json` | fritted glass, 100 %, no fins, 4 skylights |
+| `test_langford_4_alu_fins06.json` | aluminium, 70 % SE glass, fins 0.6 m, 12 skylights |
+
+### Langford troubleshooting
+| Warning | Meaning and fix |
+|---|---|
+| *Not applied: the active Rhino document is ...* | The wrong 3dm is active. Open `rhino\LangfordA_Plurarch_render.3dm`. |
+| *N element ids not found in the Rhino scene* | The objects are missing, or their `RevitElementId` user text is missing. Click a Button wired to `tick` once; it rebuilds the object index. |
+| *no Langford parameters ... in the file* | The state file still holds the old pavilion keys; the as-built design stays on screen. |
+| *render material ... not found* | The scene's bush-hammered concrete material was renamed or deleted. |
+| Fins missing after editing the scene | Click the `tick` Button: it re-checks every object and replaces the fins. |
+
+Self-test (no Rhino needed): `.\.venv\Scripts\python.exe grasshopper\langford_builder.py --selftest`.
+It checks the plan rule, parity with `design_mcp\langford_plan.py` over all 735 valid designs,
+the fin geometry and frame, validation, the apply logic (idempotent, exact restore) and the
+file watcher.
+
+---
+
+## Pavilion (previous model)
+
+The sections below describe `model_builder.py`, which rebuilds the generated pavilion as a
+Grasshopper preview. The component, loader, StatePath, Timer and Panels are the same ones
+Langford uses.
 
 ## Requirement: Node.js (same model as the phones)
 
