@@ -182,6 +182,25 @@ def find_window(title_part: str, cls: str | None = None, timeout: float = 20) ->
     return None
 
 
+def find_hidden_window(title_part: str, cls: str) -> int | None:
+    """Like find_window, but also returns hidden top-level windows."""
+    found = []
+    proto = ctypes.WINFUNCTYPE(W.BOOL, W.HWND, W.LPARAM)
+
+    def cb(h, _):
+        c = ctypes.create_unicode_buffer(256)
+        U.GetClassNameW(h, c, 256)
+        if c.value == cls:
+            n = U.GetWindowTextLengthW(h)
+            buf = ctypes.create_unicode_buffer(n + 1)
+            U.GetWindowTextW(h, buf, n + 1)
+            if title_part in buf.value:
+                found.append(h)
+        return True
+    U.EnumWindows(proto(cb), 0)
+    return found[0] if found else None
+
+
 def _frame_margins(h) -> tuple[int, int, int, int]:
     """Invisible resize borders: window rect minus the visible (DWM) frame."""
     r, f = W.RECT(), W.RECT()
@@ -471,7 +490,11 @@ def main() -> None:
         if not rhino_bridge.available():
             sys.exit("STOP: Rhino 8 is not reachable (open Rhino and run mcpstart)")
         rhino_bridge.run_file(str(RHINO_ENGINE), {"repo": str(REPO), "action": "preview", "budget": 112})
-        rh_h = find_window("Rhino Viewport", "AfxFrameOrView140u", timeout=10)   # the study's floating viewport
+        rh_h = find_hidden_window("Rhino Viewport", "AfxFrameOrView140u")       # closing it only hides it
+        if rh_h and not U.IsWindowVisible(rh_h):
+            U.ShowWindow(rh_h, 4)   # SW_SHOWNOACTIVATE
+            time.sleep(0.5)
+        rh_h = rh_h or find_window("Rhino Viewport", "AfxFrameOrView140u", timeout=10)   # the study viewport
         if not rh_h:
             sys.exit("STOP: the Rhino study viewport did not open")
     rv_h = revit_hwnd()
