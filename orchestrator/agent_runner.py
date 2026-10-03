@@ -6,7 +6,7 @@ Isolation (verified with `claude --help` and probe runs, Claude Code 2.1.x):
     --settings {"claudeMdExcludes": [...]}       no CLAUDE.md / AGENTS.md from the machine
     --mcp-config <per-run file> --strict-mcp-config   ONLY design-mcp, no other MCP servers
     --tools ""                                   no built-in tools (no shell, files, web)
-    --allowedTools mcp__design__*                pre-approve the six design tools
+    --allowedTools mcp__design__*                pre-approve the seven design tools
     --permission-mode dontAsk                    anything else is denied, never prompted
     --json-schema <agent/decision_schema.json>   the CLI enforces the decision record shape
     --no-session-persistence
@@ -31,7 +31,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DESIGN_TOOLS = ["get_schema", "get_project_brief", "get_parameters", "evaluate", "set_parameters",
-                "get_revit_state"]
+                "get_revit_state", "optimise_skylight_layout"]
 CLAUDE_MD_EXCLUDES = ["**/CLAUDE.md", "**/CLAUDE.local.md", "**/AGENTS.md",
                       str(Path.home() / ".claude" / "CLAUDE.md").replace("\\", "/")]
 

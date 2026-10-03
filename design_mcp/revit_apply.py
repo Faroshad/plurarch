@@ -240,6 +240,9 @@ def read_state(timeout: float = 20.0, deadline: _Deadline | None = None, check_g
 
 # --- applying -------------------------------------------------------------------------------------------------
 
+MAX_BATCH = 190   # the RevitMCP add-in refuses batches over 200 steps
+
+
 def _steps(d: dict, E: dict, mats: dict[str, int]) -> list[dict]:
     steps = []
     if d["delete"]:
@@ -310,15 +313,27 @@ def apply(params: dict, *, original_finish: bool = False, dry: bool = False, lab
                 report["error"] = reason
                 return report
             t1 = time.monotonic()
-            env = rc.batch(steps, stop_on_error=True, dry=dry, timeout=dl.left())
+            # The add-in runs at most 200 steps per batch (one transaction each). Bigger changes go in chunks;
+            # a failed chunk is rolled back, earlier chunks stay, and the read-back below reports the difference
+            # (the next apply is diff-based, so it completes the rest).
+            chunks = [steps[i:i + MAX_BATCH] for i in range(0, len(steps), MAX_BATCH)]
+            res = []
+            for ci, chunk in enumerate(chunks):
+                env = rc.batch(chunk, stop_on_error=True, dry=dry, timeout=dl.left())
+                cres = _results(env)
+                bad = [r for r in cres if isinstance(r, dict) and not r.get("ok")]
+                if not env.get("ok", True) or bad:
+                    first = bad[0] if bad else env
+                    report["error"] = (f"Revit batch {ci + 1}/{len(chunks)} rolled back: " + rc.error_text(first) +
+                                       (f" (step {first.get('index')}: {first.get('command')})" if bad else "") +
+                                       (f"; {ci} earlier batch(es) applied" if ci and not dry else ""))
+                    if ci and not dry:
+                        after = read_state(deadline=dl, check_guard=False)
+                        report["mismatches"] += langford_plan.compare(p, after)["mismatches"]
+                    return report
+                res += cres
             report["batch_s"] = round(time.monotonic() - t1, 2)
-            res = _results(env)
-            bad = [r for r in res if isinstance(r, dict) and not r.get("ok")]
-            if not env.get("ok", True) or bad:
-                first = bad[0] if bad else env
-                report["error"] = ("Revit batch rolled back: " + rc.error_text(first) +
-                                   (f" (step {first.get('index')}: {first.get('command')})" if bad else ""))
-                return report
+            report["batches"] = len(chunks)
             if dry:
                 report.update({"applied": False, "verified": None, "s": round(time.monotonic() - t0, 2)})
                 return report

@@ -184,13 +184,38 @@ def evaluate(parameters: dict[str, Any]) -> dict:
 
 
 @server.tool(description=(
+    "Daylight simulation + genetic algorithm in Rhino 8 for the 12 roof lanterns (168 glazing panels). Use it when "
+    "the parameters you are about to apply keep fewer than 12 lanterns' worth of glass (0 < skylights_open < 12). "
+    "The room's rule closes whole lanterns; this tool ray-traces a CIE overcast sky onto the top-floor studio work "
+    "plane through the model's own lantern geometry and runs a genetic algorithm that chooses WHICH panels stay "
+    "glass for the SAME glass area (so evaluate's cooling, cost and carbon do not change). It returns today's "
+    "all-glass result, the room's rule, a simple ranking and the GA's best layout, each with P5 (sky component "
+    "reached by 95% of the studio floor), mean sky component and daylit area, plus a layout_id. To use a layout, "
+    "add \"skylight_layout\": <layout_id> to the parameters of set_parameters and keep skylights_open as it is. "
+    "Side-effect free; takes about 20 s; does not count as an evaluate call."
+))
+def optimise_skylight_layout(lanterns_open: int) -> dict:
+    from design_mcp import skylights
+    try:
+        n = int(lanterns_open)
+    except (TypeError, ValueError):
+        out = {"available": False, "reason": f"lanterns_open must be an integer, got {lanterns_open!r}"}
+        _log("optimise_skylight_layout", {"lanterns_open": lanterns_open}, out, False, _phase())
+        return out
+    out = skylights.optimise(n)
+    _log("optimise_skylight_layout", {"lanterns_open": n}, out, bool(out.get("available")), _phase())
+    return out
+
+
+@server.tool(description=(
     "Apply a parameter set to the live model: the shared state file (phones, stage, Rhino) and then the real "
     "Revit elements of Langford A (panel types, solid-panel material, PLX-FIN fins). verdict must be ACCEPTED "
     "or MODIFIED (a REJECTED verdict keeps the current design: do not call this tool). Every hard rule is "
     "re-checked here and anything that fails is refused, whatever the verdict says. Can succeed only once per "
     "round. The result includes the Revit report (applied, ops, verified, mismatches, error); if Revit is not "
     "reachable the design is still applied to the state file and the report says why. rationale: the short "
-    "plain-language reason. parameters must contain every key: " + PARAM_HELP
+    "plain-language reason. parameters must contain every key: " + PARAM_HELP + " Optional extra key: "
+    "skylight_layout = a layout_id from optimise_skylight_layout (same skylights_open)."
 ))
 def set_parameters(parameters: dict[str, Any], verdict: str, rationale: str) -> dict:
     inputs = {"parameters": parameters, "verdict": verdict, "rationale": rationale}

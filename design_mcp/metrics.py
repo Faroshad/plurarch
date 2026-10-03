@@ -104,8 +104,9 @@ def fin_shading(depth: float, spacing: float = FIN_SPACING) -> float:
 
 
 def quantities(p: dict) -> dict:
-    """Real areas for one parameter set, from the plan rule."""
-    pl = langford_plan.plan(p, E)
+    """Real areas for one parameter set, from the plan rule. The proxies depend on how much glass there is, not
+    on where a skylight_layout puts it (same panel count, areas within 1 %), so the layout is left out here."""
+    pl = langford_plan.plan({k: v for k, v in p.items() if k != "skylight_layout"}, E)
     glazed = [SE_PANELS[i] for i in pl["se_glazed"]]
     g_m2 = sum(x["area_m2"] for x in glazed)
     g_fin_m2 = sum(x["area_m2"] for x in glazed if x["mark"] in FINNED_HOSTS)

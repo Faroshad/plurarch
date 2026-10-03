@@ -85,15 +85,19 @@ def _clean_number(value: float, step: float):
     return round(float(value), decimals)
 
 
-def validate_parameters(params, schema: dict | None = None):
-    """Return (normalized_params, errors). Every key is required; no extra keys."""
+OPTIONAL_KEYS = ("skylight_layout",)
+
+
+def validate_parameters(params, schema: dict | None = None, sdir: Path | None = None):
+    """Return (normalized_params, errors). Every voted key is required; no extra keys except the optional,
+    non-voted "skylight_layout" (a lantern-panel layout id from optimise_skylight_layout; design_mcp/skylights.py)."""
     spec = params_by_key(schema)
     errors: list[str] = []
     if not isinstance(params, dict):
         return None, ["parameters must be an object with keys: " + ", ".join(spec)]
     out = {}
     for key in params:
-        if key not in spec:
+        if key not in spec and key not in OPTIONAL_KEYS:
             errors.append(f"unknown parameter '{key}'")
     for key, p in spec.items():
         if key not in params:
@@ -120,7 +124,19 @@ def validate_parameters(params, schema: dict | None = None):
                 errors.append(f"{key} must be on steps of {p['step']} from {p['min']}, got {v}")
             else:
                 out[key] = _clean_number(num, p["step"])
+    if not errors and params.get("skylight_layout") not in (None, "", "standard"):
+        from design_mcp import skylights
+        layout, err = skylights.check(params["skylight_layout"], out.get("skylights_open"), sdir)
+        if err:
+            errors.append(err)
+        elif layout:
+            out["skylight_layout"] = layout
     return (out if not errors else None), errors
+
+
+def voted(params: dict | None) -> dict | None:
+    """Only the voted keys (drops the reviewer's optional skylight_layout)."""
+    return {k: v for k, v in params.items() if k not in OPTIONAL_KEYS} if isinstance(params, dict) else params
 
 
 def snap_to_step(key: str, value: float, schema: dict | None = None):
@@ -237,7 +253,7 @@ def read_state(sdir: Path | None = None) -> dict:
     path = parameters_path(sdir)
     try:
         data = _read_json(path)
-        norm, errors = validate_parameters(data.get("parameters"))
+        norm, errors = validate_parameters(data.get("parameters"), sdir=sdir)
         if errors:
             raise ValueError("; ".join(errors))
         data["parameters"] = norm

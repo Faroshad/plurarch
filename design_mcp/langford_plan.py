@@ -60,16 +60,29 @@ def plan(params: dict, elements: dict | None = None) -> dict:
     se_solid = [p["id"] for p in se[k:]]
     sky_glazed = [i for l in lanterns[:n_open] for i in l["glazing_ids"]]
     sky_solid = [i for l in lanterns[n_open:] for i in l["glazing_ids"]]
+    layout = None
+    open_ls, closed_ls = lanterns[:n_open], lanterns[n_open:]
+    if params.get("skylight_layout"):  # the reviewer's panel layout: same glass, spread by simulation
+        from design_mcp import skylights
+        glazed = skylights.glazed_panels(params, E)
+        if glazed is not None:
+            layout = params["skylight_layout"]
+            every = [i for l in lanterns for i in l["glazing_ids"]]
+            sky_glazed = [i for i in every if i in glazed]
+            sky_solid = [i for i in every if i not in glazed]
+            open_ls = [l for l in lanterns if all(i in glazed for i in l["glazing_ids"])]
+            closed_ls = [l for l in lanterns if l not in open_ls]
     return {
         "params": dict(params),
         "se_glazed": se_glazed, "se_solid": se_solid,
         "se_glazed_count": k, "se_n": len(se),
         "se_glazed_area_m2": round(sum(p["area_m2"] for p in se[:k]), 2),
         "se_solid_area_m2": round(sum(p["area_m2"] for p in se[k:]), 2),
-        "lanterns_open": [l["index"] for l in lanterns[:n_open]],
-        "lanterns_open_marks": [l["mark"] for l in lanterns[:n_open]],
-        "lanterns_closed_marks": [l["mark"] for l in lanterns[n_open:]],
-        "sky_glazed": sky_glazed, "sky_solid": sky_solid,
+        "lanterns_open": [l["index"] for l in open_ls],
+        "lanterns_open_marks": [l["mark"] for l in open_ls],
+        "lanterns_closed_marks": [l["mark"] for l in closed_ls],
+        "sky_glazed": sky_glazed, "sky_solid": sky_solid, "skylight_layout": layout,
+        "lantern_glazed_panels": [sum(1 for i in l["glazing_ids"] if i in set(sky_glazed)) for l in lanterns],
         "fins": fins, "fin_depth": depth,
         "finish": finish, "material": E["infill_finish"]["materials"][finish],
     }
@@ -149,10 +162,11 @@ def summarize_state(state: dict, elements: dict | None = None) -> dict:
     se = E["se_glass_share"]["panels"]
     se_glazed = sum(1 for x in se if t(x["id"]) == "glazed")
     se_solid = sum(1 for x in se if t(x["id"]) == "solid")
-    open_l, closed_l = [], []
-    for l in E["skylights_open"]["lanterns"]:
+    open_l, closed_l, per_lantern = [], [], []
+    for l in sorted(E["skylights_open"]["lanterns"], key=lambda x: x["index"]):
         st = {t(i) for i in l["glazing_ids"]}
         (open_l if st == {"glazed"} else closed_l).append(l["mark"])
+        per_lantern.append(sum(1 for i in l["glazing_ids"] if t(i) == "glazed"))
     fins = state.get("fins", [])
     depths = sorted({round(f.get("length", 0), 2) for f in fins})
     mat = (state.get("solid_material") or {}).get("name")
@@ -162,6 +176,7 @@ def summarize_state(state: dict, elements: dict | None = None) -> dict:
         "se_panels_glazed": se_glazed, "se_panels_solid": se_solid, "se_panels_total": n,
         "se_glass_share_pct": round(100.0 * se_glazed / n, 1) if n else None,
         "lanterns_open": len(open_l), "lanterns_closed": closed_l,
+        "lantern_panels_glazed": sum(per_lantern), "lantern_glazed_panels": per_lantern,
         "fins": len(fins), "fin_depths_m": depths,
         "fin_marks_ok": all(str(f.get("mark", "")).startswith("PLX-FIN-") for f in fins),
         "solid_material": mat, "solid_finish": finish or ("as modelled (no material)" if not mat else "other"),

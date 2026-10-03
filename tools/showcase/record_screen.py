@@ -55,6 +55,8 @@ CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 # A blank, isolated profile: no sign-in, no sync, no bookmarks (Edge signs in with the Windows account).
 BROWSER_PROFILE = STATE / "chrome-screen-profile"
 VIEW_NAME = "Plurarch Showcase SE high"
+ROOF_VIEW_NAME = "Plurarch Showcase roof"
+RHINO_ENGINE = REPO / "rhino" / "plurarch_daylight.py"
 FFMPEG = shutil.which("ffmpeg") or str(Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Packages/"
                                        "Gyan.FFmpeg.Essentials_Microsoft.Winget.Source_8wekyb3d8bbwe/"
                                        "ffmpeg-8.1.1-essentials_build/bin/ffmpeg.exe")
@@ -442,6 +444,8 @@ def main() -> None:
     ap.add_argument("--rehearse", action="store_true")
     ap.add_argument("--keep-revit", action="store_true")
     ap.add_argument("--n", type=int, default=46)
+    ap.add_argument("--scenario", choices=["facade", "skylights"], default="facade",
+                    help="facade: fins rule (MODIFIED); skylights: Rhino daylight GA places the voted roof glass")
     ap.add_argument("--seed", type=int, default=11)
     args = ap.parse_args()
     random.seed(7)
@@ -457,9 +461,19 @@ def main() -> None:
     if not ok:
         sys.exit(f"STOP: {why}")
     views = (rc.data(rc.call("get_views")) or {}).get("views") or []
-    view_id = next((int(v["id"]) for v in views if v.get("name") == VIEW_NAME), None)
+    want_view = ROOF_VIEW_NAME if args.scenario == "skylights" else VIEW_NAME
+    view_id = next((int(v["id"]) for v in views if v.get("name") == want_view), None)
     if not view_id:
-        sys.exit(f"STOP: the Revit view '{VIEW_NAME}' is missing")
+        sys.exit(f"STOP: the Revit view '{want_view}' is missing")
+    rh_h = None
+    if args.scenario == "skylights":
+        from design_mcp import rhino_bridge
+        if not rhino_bridge.available():
+            sys.exit("STOP: Rhino 8 is not reachable (open Rhino and run mcpstart)")
+        rhino_bridge.run_file(str(RHINO_ENGINE), {"repo": str(REPO), "action": "preview", "budget": 112})
+        rh_h = find_window("Rhino Viewport", "AfxFrameOrView140u", timeout=10)   # the study's floating viewport
+        if not rh_h:
+            sys.exit("STOP: the Rhino study viewport did not open")
     rv_h = revit_hwnd()
     if not rv_h:
         sys.exit("STOP: no Revit window")
@@ -504,11 +518,16 @@ def main() -> None:
     # stack: terminal + Revit behind, console + phone in front; together they cover the whole work area
     split = 860  # review layout: terminal | Revit
     place(wt_h, 0, 0, split, lh)
+    if rh_h:
+        place(rh_h, split, 0, lw - split, lh)
     place(rv_h, split, 0, lw - split, lh)
     time.sleep(1.0)
-    se_ids = [p["id"] for p in json.loads((REPO / "config" / "langford" / "elements.json").read_text(encoding="utf-8"))
-              ["se_glass_share"]["panels"] if 17 <= p["center"][0] <= 47]  # the middle bays: fins + solid lites
-    rc.call("zoom_to_elements", {"ids": se_ids})  # frame the SE façade in the resized window
+    EL = json.loads((REPO / "config" / "langford" / "elements.json").read_text(encoding="utf-8"))
+    if args.scenario == "skylights":
+        zoom_ids = [i for l in EL["skylights_open"]["lanterns"] if 18 <= l["centroid"][0] <= 44 for i in l["glazing_ids"]]
+    else:
+        zoom_ids = [p["id"] for p in EL["se_glass_share"]["panels"] if 17 <= p["center"][0] <= 47]  # middle bays
+    rc.call("zoom_to_elements", {"ids": zoom_ids})  # frame the changing elements in the resized window
     place(con_h, 0, 0, lw * 2 / 3, lh)
     place(ph_h, lw * 2 / 3, 0, lw / 3, lh)
     con, ph = Win(con_page, con_h, "console"), Win(ph_page, ph_h, "phone")
@@ -548,7 +567,10 @@ def main() -> None:
                                     "-movflags", "+faststart", str(out4k)],
                                    stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=open(STATE / "ffmpeg.log", "w"))
             time.sleep(2.0)
-            scenario(con, ph, wt_h, rv_h, args)
+            if args.scenario == "skylights":
+                scenario_skylights(con, ph, wt_h, rv_h, rh_h, args)
+            else:
+                scenario(con, ph, wt_h, rv_h, args)
             time.sleep(1.0)
     finally:
         if rec:
@@ -677,6 +699,110 @@ def scenario(con: Win, ph: Win, wt_h: int, rv_h: int, args) -> None:
     ph.hover(".reveal-card", frame=True, dur=0.9)
     time.sleep(3.5)
     con.click("#stage-link", after=0.5)                # the projector view
+    time.sleep(8.0)
+    log(f"scenario took {time.time() - t0:.0f} s")
+
+
+
+def vote_on_phone(ph: Win, answers: list) -> None:
+    """answers: (question key, 'choice' / 'Less' / 'More' / None, how many taps)."""
+    for key, action, taps in answers:
+        if not (ph.click(f'.v3d-pin[data-q="{key}"]', frame=True, after=1.3) or ph.click("#go-3d", frame=True, after=1.3)):
+            continue
+        if action == "choice":
+            ph.click('.sheet.open label.tile:has(input[value="concrete"])', frame=True, after=1.0)
+        elif action:
+            for _ in range(taps):
+                ph.click(f'.sheet.open .round-btn[aria-label^="{action}"]', frame=True, after=0.7)
+            time.sleep(0.4)
+        else:
+            time.sleep(1.2)
+        ph.click(".sheet.open .sheet-done", frame=True, after=1.0)
+    for _ in range(3):
+        go = phone_status(ph).get("go") or ""
+        if go.startswith("Submit"):
+            ph.click("#go-3d", frame=True, after=2.0)
+            return
+        if go.startswith("Next"):
+            ph.click("#go-3d", frame=True, after=1.3)
+            ph.click(".sheet.open .sheet-done", frame=True, after=1.0)
+
+
+def scenario_skylights(con: Win, ph: Win, wt_h: int, rv_h: int, rh_h, args) -> None:
+    """Round: the room cuts roof glass to 8 lanterns' worth; the reviewer asks Rhino where that glass should go."""
+    t0 = time.time()
+    log("recording (skylights)")
+    time.sleep(1.5)
+    con.click("#round-btn", after=0.5)
+    wait_for(lambda: phone_status(ph).get("go"), 25)
+    time.sleep(1.0)
+    r = ph.rect("canvas", frame=True)
+    if r:
+        x, y = ph.to_screen(r["x"] + 40, r["y"] + 60)
+        drag(x, y, x - int(70 * SCALE), y + int(4 * SCALE), 1.0)
+        time.sleep(0.8)
+    vote_on_phone(ph, [("infill_finish", "choice", 1), ("se_glass_share", "Less", 1),
+                       ("fin_depth", "More", 2), ("skylights_open", "Less", 2)])
+    sim = subprocess.Popen([VENV_PY, str(REPO / "orchestrator" / "orchestrator.py"), "--backend", "local", "simulate",
+                            "--profile", "skylight_cut", "--n", str(args.n), "--over", "24", "--seed", str(args.seed)],
+                           env=orch_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(2.5)
+    for i in (4, 1):                                    # the roof question, then back to the finish
+        con.click(f"#seg-questions button:nth-child({i})", after=0.4)
+        con.hover("#heatmap", dur=0.8)
+        time.sleep(6.0)
+    while sim.poll() is None:
+        time.sleep(0.4)
+    con.click("#seg-questions button:nth-child(4)", after=0.4)
+    time.sleep(3.0)
+
+    t_close = time.time()
+    con.click("#round-btn", after=1.0)
+    con.hover("#agent", dur=0.6)
+
+    def agent_lines():
+        meta = showcase_feed.latest(STATE)
+        if not meta or float(meta.get("started") or 0) < t_close - 1:
+            return None
+        lines, _, done = showcase_feed.lines_from(STATE / "agent_runs" / meta["stream"])
+        return lines, done
+
+    def saw(kind, tool):
+        return lambda: (lambda r: r and (r[1] or any(L.get("k") == kind and L.get("tool") == tool for L in r[0])))(agent_lines())
+
+    # the terminal + Rhino as soon as the agent is working; Rhino draws the study live when it is called
+    wait_for(saw("call", "evaluate"), 40, 0.25)
+    raise_window(wt_h)
+    if rh_h:
+        raise_window(rh_h)
+    move_to(SCREEN_W * 0.22, SCREEN_H * 0.70, 0.8)
+    wait_for(saw("call", "optimise_skylight_layout"), 60, 0.25)
+    move_to(SCREEN_W * 0.70, SCREEN_H * 0.55, 1.0)      # watch the rays, the heat map and the GA in Rhino
+    wait_for(saw("result", "optimise_skylight_layout"), 120, 0.3)
+    time.sleep(0.8)
+    raise_window(rv_h)                                  # Revit, before the agent writes the layout
+    move_to(SCREEN_W * 0.72, SCREEN_H * 0.45, 0.9)
+    wait_for(lambda: (lambda r: r and r[1])(agent_lines()), 120, 0.4)
+    time.sleep(2.0)
+    move_to(SCREEN_W * 0.22, SCREEN_H * 0.80, 0.9)      # the verdict and the cited simulation numbers
+    time.sleep(5.0)
+    if rh_h:                                            # one more look at the study's final readout
+        raise_window(rh_h)
+        time.sleep(3.0)
+        raise_window(rv_h)
+        time.sleep(2.0)
+
+    raise_window(con.hwnd)
+    raise_window(ph.hwnd)
+    time.sleep(0.8)
+    move_to(*con.to_screen(640, 560), 0.7)
+    wait_for(lambda: ph.rect(".reveal-card", frame=True), 12)
+    con.scroll_to("#decision-card", top_at=110)
+    time.sleep(3.0)
+    if ph.click('.v3d-pin[data-q="skylights_open"]', frame=True, after=4.5):   # the phone flies to the lanterns
+        ph.click(".sheet.open .sheet-done", frame=True, after=1.0)
+    time.sleep(1.5)
+    con.click("#stage-link", after=0.5)
     time.sleep(8.0)
     log(f"scenario took {time.time() - t0:.0f} s")
 

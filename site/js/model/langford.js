@@ -38,7 +38,23 @@ export function normalizeParams(params) {
     const s = lo + Math.round((Math.min(hi, Math.max(lo, v)) - lo) / st) * st;
     out[k] = Math.round(Math.min(hi, Math.max(lo, s)) * 1e6) / 1e6;
   }
+  // the reviewer's lantern-panel layout (design_mcp/skylights.py): one bit per lantern glazing panel in
+  // ascending Revit id order, hex, most significant bit first
+  if (typeof src.skylight_mask === 'string' && /^[0-9a-f]{20,64}$/.test(src.skylight_mask)) {
+    out.skylight_mask = src.skylight_mask;
+    if (src.skylight_layout) out.skylight_layout = String(src.skylight_layout);
+  }
   return out;
+}
+
+/** The glazed lantern panel ids of a layout mask, or null for the plain whole-lantern rule. */
+export function skyGlazedIds(P) {
+  if (!BASE || !P || !P.skylight_mask) return null;
+  if (!BASE.skyIds) BASE.skyIds = BASE.elements.filter((e) => e.q === 'skylights_open').map((e) => e.id).sort((a, b) => a - b);
+  const bits = [...P.skylight_mask].map((c) => parseInt(c, 16).toString(2).padStart(4, '0')).join('');
+  const set = new Set();
+  BASE.skyIds.forEach((id, i) => { if (bits[i] === '1') set.add(id); });
+  return set;
 }
 
 /* ------------------------------------------------------------------ base geometry */
@@ -347,7 +363,9 @@ export function planLangford(params) {
   const k = glazedCount(P.se_glass_share, se.length);
   const nOpen = Math.max(0, Math.min(BASE.lanternsN, Math.round(P.skylights_open)));
   const glazing = BASE.elements.filter((e) => e.q === 'skylights_open');
-  const byLantern = (open) => glazing.filter((e) => (e.lantern < nOpen) === open).sort((a, b) => a.lantern - b.lantern).map((e) => e.id);
+  const layout = skyGlazedIds(P);
+  const isGlazed = (e) => (layout ? layout.has(e.id) : e.lantern < nOpen);
+  const byLantern = (open) => glazing.filter((e) => isGlazed(e) === open).sort((a, b) => a.lantern - b.lantern).map((e) => e.id);
   const depth = r4(P.fin_depth);
   const fins = depth > 1e-9 ? BASE.anchors.map((a, i) => ({
     mark: a.mark, index: Number.isFinite(a.index) ? a.index : i,
@@ -358,7 +376,9 @@ export function planLangford(params) {
   })) : [];
   const seGlazed = se.slice(0, k).map((e) => e.id);
   const seSolid = se.slice(k).map((e) => e.id);
-  const open = Array.from({ length: nOpen }, (_, i) => i);
+  const open = layout
+    ? Array.from({ length: BASE.lanternsN }, (_, i) => i).filter((i) => glazing.filter((e) => e.lantern === i).every(isGlazed))
+    : Array.from({ length: nOpen }, (_, i) => i);
   return {
     params: P,
     se_glazed: seGlazed, se_solid: seSolid,
@@ -424,12 +444,13 @@ export function buildLangford(params) {
   const B = BASE;
   const k = glazedCount(P.se_glass_share, B.seN);
   const infill = 'infill_' + P.infill_finish;
+  const sky = skyGlazedIds(P);
   const parts = [];
   const solidLites = [];
   for (const e of B.elements) {
     let m = e.mat;
     if (e.q === 'se_glass_share') { if (e.rank >= k) { m = infill; solidLites.push(e); } else m = 'glass'; }
-    else if (e.q === 'skylights_open') m = e.lantern < P.skylights_open ? 'glass' : infill;
+    else if (e.q === 'skylights_open') m = (sky ? sky.has(e.id) : e.lantern < P.skylights_open) ? 'glass' : infill;
     else if (e.q === 'infill_finish' || m === 'infill') m = infill;
     parts.push({ m, t: tagOf(e), tri: e.tri, id: e.id });
   }

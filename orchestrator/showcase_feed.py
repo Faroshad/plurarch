@@ -22,7 +22,8 @@ def _params(p: dict | None) -> str:
         return ""
     order = ("infill_finish", "se_glass_share", "fin_depth", "skylights_open")
     units = {"se_glass_share": "%", "fin_depth": " m", "skylights_open": " lanterns"}
-    return " · ".join(f"{p[k]}{units.get(k, '')}" for k in order if k in p)
+    txt = " · ".join(f"{p[k]}{units.get(k, '')}" for k in order if k in p)
+    return txt + (f" · roof layout {p['skylight_layout']}" if p.get("skylight_layout") else "")
 
 
 def _result_text(block) -> dict | str:
@@ -71,6 +72,15 @@ def _summarise_result(tool: str, out) -> str:
             else:
                 rv_txt = " · Revit: not applied (" + _short(rv.get("error") or rv.get("reason") or "", 60) + ")"
         return f"applied {_params(out.get('parameters'))}{rv_txt}"
+    if tool == "optimise_skylight_layout":
+        if not out.get("available") or not out.get("genetic_algorithm_best"):
+            return "Rhino: " + _short(out.get("reason") or out.get("skipped") or "not run", 90)
+        ga, rule, today = out["genetic_algorithm_best"], out["rooms_rule_close_whole_lanterns"], out["today_all_glazed"]
+        rank = out.get("simple_ranking") or {}
+        return (f"Rhino ray tracing + genetic algorithm ({out.get('seconds')} s): 95% of the floor gets "
+                f"{rule['p5_sky_component_pct']}% (whole lanterns closed) → {ga['p5_sky_component_pct']}% "
+                f"(GA layout {ga['layout_id']}; ranking {rank.get('p5_sky_component_pct')}%, today "
+                f"{today['p5_sky_component_pct']}%) · mean {rule['mean_sky_component_pct']}% → {ga['mean_sky_component_pct']}%")
     if tool == "get_parameters":
         return "model now: " + _params(out.get("parameters"))
     if tool == "get_revit_state":
@@ -78,8 +88,9 @@ def _summarise_result(tool: str, out) -> str:
             return "Revit: " + _short(out.get("error") or out.get("reason") or "unavailable", 80)
         depths = out.get("fin_depths_m") or []
         depth = f" ({max(depths)} m)" if depths else ""
+        lp = out.get("lantern_panels_glazed")
         bits = [f"SE glass {out.get('se_panels_glazed', '?')}/{out.get('se_panels_total', '?')}",
-                f"lanterns open {out.get('lanterns_open', '?')}",
+                (f"lantern panels glazed {lp}/168" if lp not in (None, 168) else f"lanterns open {out.get('lanterns_open', '?')}"),
                 f"fins {out.get('fins', 0)}{depth}",
                 f"finish {out.get('solid_finish', '?')}"]
         match = out.get("matches_applied_parameters")
@@ -127,6 +138,8 @@ def lines_from(stream_path: Path, start: int = 0) -> tuple[list[dict], int, bool
                         continue
                     inp = c.get("input") or {}
                     arg = _params(inp.get("parameters")) if isinstance(inp, dict) and inp.get("parameters") else ""
+                    if name == "optimise_skylight_layout" and isinstance(inp, dict):
+                        arg = f"lanterns_open={inp.get('lanterns_open')}"
                     if name == "set_parameters" and isinstance(inp, dict):
                         arg = f"{inp.get('verdict', '')} · {arg}"
                     out.append({"k": "call", "tool": name, "t": arg})

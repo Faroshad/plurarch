@@ -44,7 +44,7 @@ class TestDesignMcp(unittest.TestCase):
             async with Client(params) as client:
                 tools = await client.list_tools()
                 names = sorted(t.name for t in tools.tools)
-                self.assertEqual(names, ["evaluate", "get_parameters", "get_project_brief", "get_revit_state", "get_schema",
+                self.assertEqual(names, ["evaluate", "get_parameters", "get_project_brief", "get_revit_state", "get_schema", "optimise_skylight_layout",
                                          "set_parameters"])
 
                 schema = payload(await client.call_tool("get_schema", {}))

@@ -65,10 +65,11 @@ def validate_decision(record, proposal_params: dict, before_params: dict, state_
     rec["applied_parameters"] = applied
 
     applied_ok = [e for e in log_entries if e.get("tool") == "set_parameters" and e.get("ok")]
-    if verdict == "MODIFIED" and applied == proposal_params:
+    # the voted values decide the verdict; a skylight_layout is the reviewer's placement of the voted glass
+    if verdict == "MODIFIED" and core.voted(applied) == proposal_params:
         warnings.append("MODIFIED record equals the proposal; relabelled ACCEPTED")
         rec["verdict"] = verdict = "ACCEPTED"
-    if verdict == "ACCEPTED" and applied != proposal_params:
+    if verdict == "ACCEPTED" and core.voted(applied) != proposal_params:
         fatal.append("ACCEPTED but the applied parameters differ from the proposal")
     if verdict == "REJECTED":
         if applied != before_params:

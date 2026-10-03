@@ -34,7 +34,7 @@ REPO = HERE.parent
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
 
-from design_mcp import core  # noqa: E402
+from design_mcp import core, skylights  # noqa: E402
 from backend_base import BackendError  # noqa: E402
 import tally  # noqa: E402
 from agent_runner import run_agent  # noqa: E402
@@ -246,11 +246,23 @@ class EventForwarder:
                 self.emit(5, "revit", revit_line(self.revit), "ok" if self.revit.get("verified") else "warn")
             else:
                 self.emit(5, tool, f"Refused: {out.get('detail') or out.get('error')}", "warn")
+        elif tool == "optimise_skylight_layout":
+            if out.get("available") and out.get("genetic_algorithm_best"):
+                ga, rule = out["genetic_algorithm_best"], out["rooms_rule_close_whole_lanterns"]
+                self.emit(3, tool, f"Rhino daylight + GA ({inp.get('lanterns_open')} lanterns' glass): 95% of the floor gets "
+                                   f"{rule['p5_sky_component_pct']}% with whole lanterns closed, "
+                                   f"{ga['p5_sky_component_pct']}% with the GA layout {ga['layout_id']} "
+                                   f"(today {out['today_all_glazed']['p5_sky_component_pct']}%)")
+            else:
+                self.emit(3, tool, f"Rhino study not run: {out.get('reason') or out.get('skipped')}", "warn")
         elif tool == "get_revit_state":
             if out.get("available"):
                 m = out.get("matches_applied_parameters")
                 self.emit(6, tool, f"Checked Revit: SE glass {out.get('se_panels_glazed')}/{out.get('se_panels_total')}, "
-                                   f"{out.get('lanterns_open')} lanterns open, {out.get('fins')} fins "
+                                   f"{out.get('lanterns_open')} lanterns open"
+                                   + (f" ({out.get('lantern_panels_glazed')} lantern panels glazed)"
+                                      if out.get('lantern_panels_glazed') not in (None, 168) else "")
+                                   + f", {out.get('fins')} fins "
                                    f"{out.get('fin_depths_m')} m, finish {out.get('solid_finish')}"
                                    + ("" if m is None else (" · matches" if m else " · MISMATCH")),
                           "agent" if m in (None, True) else "warn")
@@ -293,7 +305,7 @@ def process_round(ctx: Ctx, session: dict, rnd: dict) -> dict:
 
     if part["votes"] == 0:
         say("  No votes in this round: the design stays as it is", "warn")
-        row = {**base, "status": "skipped", "verdict": None, "applied_parameters": before,
+        row = {**base, "status": "skipped", "verdict": None, "applied_parameters": skylights.with_mask(before),
                "evidence": {}, "alternatives_considered": [], "changes": [], "rationale": None,
                "message": "No votes were cast in this round, so the design stays as it is.",
                "metrics": {"before": m_before, "proposal": m_before, "after": m_before}, "duration_s": 0}
@@ -338,7 +350,7 @@ def process_round(ctx: Ctx, session: dict, rnd: dict) -> dict:
         msg = "The reviewer agent could not complete this round (" + "; ".join(fatal)[:300] + \
               "). The design stays as it is."
         say("  FAILED: " + "; ".join(fatal), "err")
-        row = {**base, "status": "failed", "verdict": None, "applied_parameters": before, "evidence": {},
+        row = {**base, "status": "failed", "verdict": None, "applied_parameters": skylights.with_mask(before), "evidence": {},
                "alternatives_considered": [], "changes": [], "rationale": None, "message": msg,
                "metrics": {"before": m_before,
                            "proposal": core.evaluate(proposal["parameters"], ctx.schema, ctx.brief)["metrics"],
@@ -347,7 +359,7 @@ def process_round(ctx: Ctx, session: dict, rnd: dict) -> dict:
         fwd.emit(6, "decision", "Failed: the design stays as it is", "err")
     else:
         applied = rec["applied_parameters"]
-        row = {**base, "status": "ok", "verdict": rec["verdict"], "applied_parameters": applied,
+        row = {**base, "status": "ok", "verdict": rec["verdict"], "applied_parameters": skylights.with_mask(applied),
                "evidence": rec["evidence"], "alternatives_considered": rec.get("alternatives_considered", []),
                "changes": rec.get("changes", []), "rationale": rec["rationale"],
                "consistency_note": rec.get("consistency_note"), "message": rec.get("what_to_vote_for"),
@@ -514,6 +526,9 @@ PROFILES = {
     "rule_violating": {"infill_finish": {"concrete": 0.62, "fritted_glass": 0.28, "aluminium": 0.10},
                        "se_glass_share": (100, 2), "fin_depth": (0.3, 0.1), "skylights_open": (12, 0.8)},
     # the recorded showcase: lots of glass with thin fins -> the climate rule asks for 0.6 m (MODIFIED)
+    # round 2 of the showcase: keep round 1 (fins 0.6), cut roof glass by a third to save cooling
+    "skylight_cut": {"infill_finish": {"concrete": 0.85, "fritted_glass": 0.1, "aluminium": 0.05},
+                     "se_glass_share": (90, 3), "fin_depth": (0.6, 0.05), "skylights_open": (8, 0.7)},
     "showcase": {"infill_finish": {"concrete": 0.75, "fritted_glass": 0.17, "aluminium": 0.08},
                  "se_glass_share": (90, 4), "fin_depth": (0.3, 0.08), "skylights_open": (12, 0.6)},
 }
@@ -714,6 +729,7 @@ def cmd_test_agent(ctx: Ctx, args) -> None:
                 say(res.stderr_tail, "dim")
             sys.exit(1)
         after = core.read_state(tmp)["parameters"]
+        os.environ["PLURARCH_STATE_DIR"] = str(tmp)  # layouts the agent registered live in the test state
         rec, fatal, warnings = validate_decision(res.record, proposal["parameters"], proposal["current_parameters"],
                                                  after, res.log_entries, ctx.schema, ctx.brief)
         for w in warnings:
