@@ -161,6 +161,25 @@ def run_agent(proposal: dict, *, state_dir: Path, claude: str, python: str, mode
     ]
     env = {**os.environ, "PYTHONUTF8": "1"}
 
+    # Keep the raw event stream of every run (audit trail; the showcase recorder replays it live).
+    runs_dir = state_dir / "agent_runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    stream_path = runs_dir / f"{run_id}.jsonl"
+    shown_cmd = (f"{Path(claude).name} -p --output-format stream-json --verbose "
+                 "--system-prompt <agent/SYSTEM_PROMPT.md> --settings '{claudeMdExcludes: [...]}' "
+                 "--json-schema <agent/decision_schema.json> --mcp-config <design-mcp only> --strict-mcp-config "
+                 "--tools \"\" --allowedTools " + ",".join(f"mcp__design__{t}" for t in DESIGN_TOOLS) +
+                 f" --permission-mode dontAsk --no-session-persistence --model {model}")
+    try:
+        (runs_dir / "latest.json").write_text(json.dumps({
+            "run_id": run_id, "round_id": round_id, "round_number": proposal.get("round_number"),
+            "stream": stream_path.name, "command": shown_cmd, "started": time.time(),
+            "proposal": proposal.get("parameters"), "participation": proposal.get("participation"),
+            "prompt_chars": len(build_prompt(proposal)),
+        }), encoding="utf-8")
+    except OSError:
+        pass
+
     tail = _LogTail(state_dir / "log.jsonl", run_id, on_event or (lambda e: None))
     tail.start()
     t0 = time.monotonic()
@@ -178,13 +197,24 @@ def run_agent(proposal: dict, *, state_dir: Path, claude: str, python: str, mode
 
     def read_stdout():
         nonlocal result_event
+        try:
+            sink = open(stream_path, "ab", buffering=0)
+        except OSError:
+            sink = None
         for raw in proc.stdout:
+            if sink:
+                try:
+                    sink.write(raw if raw.endswith(b"\n") else raw + b"\n")
+                except OSError:
+                    pass
             try:
                 ev = json.loads(raw.decode("utf-8", "replace"))
             except ValueError:
                 continue
             if ev.get("type") == "result":
                 result_event = ev
+        if sink:
+            sink.close()
 
     def read_stderr():
         for raw in proc.stderr:

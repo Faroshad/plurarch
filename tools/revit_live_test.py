@@ -1,4 +1,4 @@
-"""Live Revit tests for Plurarch (run step by step; only on revit/LangfordA_Plurarch.rvt as the ACTIVE document).
+r"""Live Revit tests for Plurarch (run step by step; only on revit/LangfordA_Plurarch.rvt as the ACTIVE document).
 
     .venv\Scripts\python.exe tools\revit_live_test.py <step>   (every write step checks the document guard first)
 
@@ -24,6 +24,7 @@ SETS = {
     "A": {"infill_finish": "concrete", "se_glass_share": 60, "fin_depth": 0.6, "skylights_open": 8},
     "B": {"infill_finish": "aluminium", "se_glass_share": 90, "fin_depth": 1.2, "skylights_open": 12},
     "C": {"infill_finish": "fritted_glass", "se_glass_share": 40, "fin_depth": 0.3, "skylights_open": 2},
+    "S": {"infill_finish": "concrete", "se_glass_share": 90, "fin_depth": 0.6, "skylights_open": 12},
     "default": {"infill_finish": "concrete", "se_glass_share": 100, "fin_depth": 0, "skylights_open": 12},
 }
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import re
 import secrets
 import socket
 import threading
@@ -22,6 +23,7 @@ from backend_local import LocalBackend
 REPO = Path(__file__).resolve().parent.parent
 SITE = REPO / "site"
 CONFIG = REPO / "config"
+SHOWCASE = REPO / "tools" / "showcase" / "web"   # the video recorder's page (tools/showcase/record.py)
 PUBLIC_CONFIG_EXCLUDE = {"local.json"}
 MAX_BODY = 16 * 1024
 
@@ -221,8 +223,23 @@ class LocalServer:
                             return self._json(401, {"error": "unauthorized"})
                         q = parse_qs(url.query)
                         return self._json(200, srv.console_state((q.get("round_id") or [None])[0]))
+                    if path == "/api/showcase/agent":  # the live reviewer-agent stream, for the recorder
+                        if not self._authorized():
+                            return self._json(401, {"error": "unauthorized"})
+                        q = parse_qs(url.query)
+                        return self._json(200, srv.showcase_agent(int((q.get("from") or ["0"])[0]),
+                                                                  float((q.get("since") or ["0"])[0])))
                     if path.startswith("/api/"):
                         return self._json(404, {"error": "not_found"})
+                    if path.startswith("/showcase/revit/"):  # Revit view exports written by the recorder
+                        name = path.rsplit("/", 1)[-1]
+                        if not re.fullmatch(r"[a-z0-9_]{1,40}\.png", name):
+                            return self._json(404, {"error": "not_found"})
+                        p = srv.state_dir / "showcase" / name
+                        return self._file(p, "no-store") if p.is_file() else self._json(404, {"error": "not_found"})
+                    if path.startswith("/showcase/"):
+                        p = self._safe(SHOWCASE, path[len("/showcase/"):])
+                        return self._file(p) if p else self._json(404, {"error": "not_found"})
                     if path in ("/qr.png", "/qr_plain.png"):
                         p = srv.state_dir / path.lstrip("/")
                         return self._file(p) if p.exists() else self._json(404, {"error": "not_found"})
@@ -300,6 +317,15 @@ class LocalServer:
         self.status.invalidate()
         self.log(f"Round {r['number']} {'opened' if open_ else 'closed'} from the console", "ok")
         return 200, {"round": r}
+
+    def showcase_agent(self, start: int, since: float) -> dict:
+        """Readable lines of the newest reviewer-agent run that started after `since` (epoch s)."""
+        import showcase_feed
+        meta = showcase_feed.latest(self.state_dir)
+        if not meta or float(meta.get("started") or 0) < since:
+            return {"run": None, "lines": [], "next": 0, "done": False}
+        lines, nxt, done = showcase_feed.lines_from(self.state_dir / "agent_runs" / meta["stream"], max(0, start))
+        return {"run": meta, "lines": lines, "next": nxt, "done": done}
 
     def console_state(self, round_id: str | None):
         s = self.backend.get_active_session()

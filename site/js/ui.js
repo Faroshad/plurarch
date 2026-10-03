@@ -308,6 +308,7 @@ export async function loadAppConfig(useCase) {
       expected_participants: numOr(pr.expected_participants, null),
       projection_scale: Math.min(3, Math.max(1, numOr(pr.projection_scale, 1.4))),
       privacy_notice: String(pr.privacy_notice || ''),
+      about: String(pr.about || ''),
       facilitator_label: String(pr.facilitator_label || 'Facilitator'),
       participant_label: String(pr.participant_label || 'Participant'),
     },

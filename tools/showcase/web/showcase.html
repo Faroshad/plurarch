@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Plurarch Showcase</title>
+<!-- The recording surface for tools/showcase/record.py: 1920x1080, left two thirds = facilitator console /
+     reviewer-agent terminal / Revit / stage, right third = one participant phone. Driven through window.SC. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --bg: #0B0C0F; --panel: #14161B; --panel-2: #1B1E25; --line: #2A2E37;
+    --text: #EDEEF2; --text-2: #A3A6B1; --text-3: #6E7280;
+    --ring: linear-gradient(115deg, #5EE0C0 0%, #6FB8F7 24%, #A58BF8 50%, #F06BB5 74%, #FFC764 100%);
+    --accent: #F0489B; --hl: #FF9F43; --ok: #4ADE80; --warn: #FBBF24; --bad: #F87171;
+    --font: "Inter", system-ui, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); }
+  body::before { content: ""; position: absolute; inset: -20% -10% auto auto; width: 1100px; height: 900px;
+    background: radial-gradient(closest-side, rgba(165,139,248,0.16), transparent 70%); pointer-events: none; }
+  body::after { content: ""; position: absolute; inset: auto auto -30% -10%; width: 1200px; height: 800px;
+    background: radial-gradient(closest-side, rgba(94,224,192,0.10), transparent 70%); pointer-events: none; }
+
+  /* top bar */
+  .top { position: absolute; left: 40px; right: 40px; top: 18px; height: 52px; display: flex; align-items: center; gap: 18px; z-index: 5; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; letter-spacing: -0.01em; }
+  .brand svg { width: 34px; height: 34px; }
+  .brand small { font-weight: 500; font-size: 15px; color: var(--text-2); letter-spacing: 0; }
+  .steps { display: flex; gap: 6px; margin-left: auto; }
+  .step { display: flex; align-items: center; gap: 8px; padding: 7px 12px 7px 8px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    color: var(--text-3); background: transparent; border: 1px solid var(--line); transition: all 400ms var(--ease); }
+  .step i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
+    background: var(--panel-2); color: var(--text-3); transition: all 400ms var(--ease); }
+  .step.done { color: var(--text-2); }
+  .step.done i { background: #2B3A33; color: var(--ok); }
+  .step.on { color: #111; background: #fff; border-color: #fff; }
+  .step.on i { background: #111; color: #fff; }
+  .chips { display: flex; gap: 8px; align-items: center; min-width: 250px; justify-content: flex-end; }
+  .chip { font-size: 14px; font-weight: 600; padding: 7px 12px; border-radius: 999px; background: var(--panel-2); color: var(--text-2);
+    border: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip.speed { color: #111; background: var(--warn); border-color: var(--warn); display: none; }
+  .chip.speed.on { display: inline-block; }
+  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 7px; vertical-align: 1px;
+    animation: blink 1.4s infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+
+  /* left window */
+  .win { position: absolute; left: 40px; top: 88px; width: 1200px; height: 836px; border-radius: 16px; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  .win-head { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: var(--panel-2);
+    border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text-2); }
+  .win-head b { color: var(--text); font-weight: 600; }
+  .win-head .tag { margin-left: auto; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+  .win-head .ic { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #111; }
+  .win-body { position: absolute; left: 0; top: 40px; width: 1200px; height: 796px; }
+  .pane { position: absolute; inset: 0; opacity: 0; transform: scale(0.985); transition: opacity 600ms var(--ease), transform 600ms var(--ease); pointer-events: none; }
+  .pane.on { opacity: 1; transform: none; pointer-events: auto; }
+  .heads > div { position: absolute; inset: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; opacity: 0; transition: opacity 400ms; }
+  .heads > div.on { opacity: 1; }
+  .scaled { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #fff; }
+  #f-console { width: 1440px; height: 955px; transform: scale(0.83333); }
+  #f-stage { width: 1600px; height: 1061px; transform: scale(0.75); background: #fff; }
+
+  /* terminal */
+  #term { background: #0A0A0B; overflow: hidden; padding: 20px 26px 26px; font: 15px/1.6 var(--mono); color: #D7D7DB; }
+  #term-scroll { position: absolute; left: 26px; right: 26px; top: 20px; bottom: 20px; overflow: hidden; }
+  #term-lines { position: absolute; left: 0; right: 0; bottom: 0; }
+  .tl { white-space: pre-wrap; word-break: break-word; margin: 0 0 6px; opacity: 0; transform: translateY(6px); animation: tin 260ms var(--ease) forwards; }
+  @keyframes tin { to { opacity: 1; transform: none; } }
+  .tl.cmd { color: #8B8F9C; }
+  .tl.cmd .ps { color: var(--ok); }
+  .tl.stdin { color: #C9B6FF; }
+  .tl.stdin .k { color: #7DD3FC; }
+  .tl.sys { color: #7A7E8A; }
+  .tl.think { color: #B7A6E8; font-style: italic; }
+  .tl.say { color: #EDEEF2; }
+  .tl.call { color: #fff; margin-top: 10px; }
+  .tl.call .dot { color: var(--ok); }
+  .tl.call .fn { font-weight: 600; }
+  .tl.call .args { color: #9CA3AF; }
+  .tl.result { color: #A3A6B1; padding-left: 22px; }
+  .tl.result.rv { color: var(--hl); }
+  .tl.verdict { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: #121317; color: #EDEEF2; }
+  .tl.verdict .v { font-weight: 600; padding: 2px 10px; border-radius: 6px; margin-right: 10px; }
+  .v.ACCEPTED { background: #DDF3E4; color: #1E6B3A; } .v.MODIFIED { background: #FFF1D6; color: #8A5A00; } .v.REJECTED { background: #FDE2E2; color: #A12626; }
+  .cursor { display: inline-block; width: 9px; height: 17px; background: #D7D7DB; vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+
+  /* revit */
+  #revit { background: #212733; overflow: hidden; }
+  #revit .img { position: absolute; inset: 0; background-size: cover; background-position: center 42%; transition: opacity 900ms var(--ease); }
+  #rv-after { clip-path: inset(0 0 0 100%); }
+  #rv-diff { opacity: 0; mix-blend-mode: normal; }
+  #rv-diff.on { animation: pulse 2.2s var(--ease) 3; animation-fill-mode: forwards; }
+  @keyframes pulse { 0% { opacity: 0; } 35% { opacity: 1; } 70% { opacity: 0.55; } 100% { opacity: 1; } }
+  #rv-wipe { position: absolute; top: 0; bottom: 0; width: 3px; background: #fff; left: 100%; box-shadow: 0 0 18px rgba(255,255,255,0.8); opacity: 0; }
+  .rv-chip { position: absolute; left: 18px; top: 16px; padding: 9px 14px; border-radius: 10px; background: rgba(10,10,12,0.78); backdrop-filter: blur(6px);
+    font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .rv-chip .d { width: 10px; height: 10px; border-radius: 50%; background: var(--text-3); }
+  .rv-chip.busy .d { background: var(--warn); animation: blink 0.8s infinite; }
+  .rv-chip.done .d { background: var(--ok); }
+  .rv-card { position: absolute; left: 18px; bottom: 18px; width: 560px; padding: 16px 18px; border-radius: 14px; background: rgba(10,10,12,0.84);
+    backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08); opacity: 0; transform: translateY(10px); transition: all 500ms var(--ease); }
+  .rv-card.on { opacity: 1; transform: none; }
+  .rv-card h4 { margin: 0 0 10px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+  .rv-card ol { margin: 0; padding: 0; list-style: none; }
+  .rv-card li { font-size: 16px; line-height: 1.45; padding: 5px 0 5px 28px; position: relative; opacity: 0; transform: translateX(-6px); transition: all 400ms var(--ease); }
+  .rv-card li.on { opacity: 1; transform: none; }
+  .rv-card li::before { content: ""; position: absolute; left: 4px; top: 12px; width: 12px; height: 12px; border-radius: 3px; background: var(--hl); }
+  .rv-card li.check::before { background: var(--ok); border-radius: 50%; }
+  .rv-legend { position: absolute; right: 18px; bottom: 18px; padding: 9px 14px; border-radius: 10px; background: rgba(10,10,12,0.78); font-size: 14px;
+    color: var(--text-2); display: flex; align-items: center; gap: 9px; opacity: 0; transition: opacity 500ms; max-width: 520px; }
+  .rv-legend.on { opacity: 1; }
+  .rv-legend i { width: 14px; height: 14px; border-radius: 3px; background: var(--hl); flex: none; }
+  .rv-label { position: absolute; top: 16px; padding: 6px 10px; border-radius: 8px; background: rgba(10,10,12,0.7); font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 400ms; }
+
+  /* phone */
+  .phone-col { position: absolute; left: 1272px; width: 616px; top: 88px; bottom: 0; display: flex; flex-direction: column; align-items: center; }
+  .phone-label { font-size: 14px; color: var(--text-2); margin: 2px 0 12px; display: flex; gap: 8px; align-items: center; }
+  .phone-label b { color: var(--text); }
+  .phone { position: relative; width: 414px; height: 868px; border-radius: 54px; background: #000; padding: 12px;
+    box-shadow: 0 0 0 2px #2C2F36, 0 30px 80px rgba(0,0,0,0.6); }
+  .phone-screen { position: relative; width: 390px; height: 844px; border-radius: 42px; overflow: hidden; background: #fff; }
+  #f-phone { width: 390px; height: 844px; border: 0; display: block; }
+  .phone-sub { margin-top: 12px; font-size: 13px; color: var(--text-3); }
+
+  /* caption */
+  .cap { position: absolute; left: 40px; width: 1200px; top: 940px; height: 120px; display: flex; gap: 18px; align-items: flex-start; }
+  .cap-n { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-weight: 800; font-size: 20px;
+    color: #111; background: var(--ring); }
+  .cap-t { font-size: 27px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+  .cap-s { font-size: 18px; color: var(--text-2); margin-top: 6px; line-height: 1.4; max-width: 1120px; }
+  .cap-in { transition: opacity 350ms var(--ease), transform 350ms var(--ease); }
+  .cap-in.out { opacity: 0; transform: translateY(8px); }
+
+  /* finger + cursor */
+  .finger { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 2.5px solid #fff;
+    background: rgba(255,255,255,0.35); box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.35); z-index: 50; pointer-events: none;
+    animation: tap 650ms var(--ease) forwards; }
+  @keyframes tap { 0% { transform: scale(1.5); opacity: 0; } 25% { transform: scale(0.85); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+  #cursor { position: absolute; left: 700px; top: 600px; width: 28px; height: 28px; z-index: 60; pointer-events: none; opacity: 0;
+    transition: left 900ms var(--ease), top 900ms var(--ease), opacity 300ms; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+  #cursor.on { opacity: 1; }
+  #cursor.press svg { transform: scale(0.85); }
+  #cursor svg { transition: transform 120ms; transform-origin: 4px 2px; }
+
+  /* cards */
+  .card { position: absolute; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(11,12,15,0.94); opacity: 0;
+    transition: opacity 700ms var(--ease); pointer-events: none; }
+  .card.on { opacity: 1; }
+  .card-in { text-align: center; max-width: 1300px; }
+  .card h1 { font-size: 86px; margin: 0; letter-spacing: -0.035em; font-weight: 800; }
+  .card h1 span { background: var(--ring); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .card p { font-size: 28px; color: var(--text-2); margin: 18px auto 0; line-height: 1.45; max-width: 1200px; }
+  .card .flow { display: flex; gap: 14px; justify-content: center; margin-top: 44px; flex-wrap: wrap; }
+  .card .flow div { padding: 14px 20px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line); font-size: 21px; font-weight: 600; }
+  .card .flow em { font-style: normal; color: var(--text-3); align-self: center; font-size: 26px; }
+  .card .fine { font-size: 17px; color: var(--text-3); margin-top: 40px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 250px); gap: 16px; justify-content: center; margin-top: 44px; }
+  .stats div { padding: 22px 18px; border-radius: 16px; background: var(--panel-2); border: 1px solid var(--line); text-align: left; }
+  .stats b { display: block; font-size: 40px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stats span { display: block; font-size: 15px; color: var(--text-2); margin-top: 4px; line-height: 1.35; }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#fff"/><path d="M6 13.5L22 8.5M8.5 15.4V21.5M12.5 14.2V21.5M16.5 12.9V21.5M20.5 11.7V21.5" stroke="#111" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+      Plurarch <small>· a room reshapes Langford A, Texas A&amp;M</small>
+    </div>
+    <nav class="steps" id="steps"></nav>
+    <div class="chips"><span class="chip speed" id="speed"></span><span class="chip" id="clock"><span class="live-dot"></span>Live</span></div>
+  </header>
+
+  <section class="win">
+    <div class="win-head heads" style="position:relative;padding:0">
+      <div data-h="console"><span class="ic" style="background:#fff">P</span><b>Facilitator dashboard</b><span>localhost · console.html</span><span class="tag">real page · live data</span></div>
+      <div data-h="terminal"><span class="ic" style="background:#D97757;color:#fff">✻</span><b>Claude Code</b><span>headless reviewer agent · only the six design-mcp tools</span><span class="tag">live process output</span></div>
+      <div data-h="revit"><span class="ic" style="background:#4F8FE8;color:#fff">R</span><b>Revit 2027</b><span>LangfordA_Plurarch.rvt · 3D view “Plurarch Showcase SE high”</span><span class="tag">rendered by Revit · exported via its API</span></div>
+      <div data-h="stage"><span class="ic" style="background:#fff">P</span><b>Projector screen</b><span>localhost · stage.html</span><span class="tag">real page · live data</span></div>
+    </div>
+    <div class="win-body">
+      <div class="pane" id="p-console"><iframe class="scaled" id="f-console" title="console"></iframe></div>
+      <div class="pane" id="p-terminal"><div id="term"><div id="term-scroll"><div id="term-lines"></div></div></div></div>
+      <div class="pane" id="p-revit"><div id="revit" style="position:absolute;inset:0">
+        <div class="img" id="rv-before"></div>
+        <div class="img" id="rv-after"></div>
+        <div class="img" id="rv-diff"></div>
+        <div id="rv-wipe"></div>
+        <div class="rv-chip" id="rv-chip"><span class="d"></span><span id="rv-chip-t">As built · before the vote</span></div>
+        <div class="rv-card" id="rv-card"><h4 id="rv-card-h">Written to the Revit model</h4><ol id="rv-list"></ol></div>
+        <div class="rv-legend" id="rv-legend"><i></i><span>Highlighted: pixels that differ between Revit’s renders before and after the vote</span></div>
+      </div></div>
+      <div class="pane" id="p-stage"><iframe class="scaled" id="f-stage" title="stage"></iframe></div>
+    </div>
+  </section>
+
+  <aside class="phone-col">
+    <div class="phone-label"><b>One participant’s phone</b> · anonymous, no app, no account</div>
+    <div class="phone"><div class="phone-screen"><iframe id="f-phone" title="phone"></iframe></div></div>
+  </aside>
+
+  <div class="cap"><div class="cap-n cap-in" id="cap-n">1</div><div class="cap-in" id="cap-body"><div class="cap-t" id="cap-t"></div><div class="cap-s" id="cap-s"></div></div></div>
+
+  <div id="cursor"><svg viewBox="0 0 28 28" width="28" height="28"><path d="M4 2l18 11-8 1.6L10.4 24z" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+
+  <div class="card" id="title-card"><div class="card-in">
+    <h1>Plurarch: <span>vote, review, build</span></h1>
+    <p>Phones in the room vote on four changes to a real building. A Claude Code agent checks the result against the project brief, then writes it into the Revit model.</p>
+    <div class="flow"><div>Phones vote</div><em>→</em><div>Tally</div><em>→</em><div>Claude Code reviews the brief</div><em>→</em><div>Revit model updated</div><em>→</em><div>Everyone sees why</div></div>
+    <div class="fine" id="title-fine"></div>
+  </div></div>
+  <div class="card" id="end-card"><div class="card-in">
+    <h1>One round, <span>end to end</span></h1>
+    <div class="stats" id="end-stats"></div>
+    <p id="end-line" style="font-size:22px;margin-top:34px"></p>
+    <div class="fine" id="end-fine"></div>
+  </div></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const KEY = (/(?:^#|[#&])key=([^&]+)/.exec(location.hash) || [])[1] || '';
+  const STEPS = ['Vote', 'Crowd', 'Close', 'Review', 'Claude Code', 'Revit', 'Result'];
+  $('steps').innerHTML = STEPS.map((s, i) => `<span class="step" data-i="${i + 1}"><i>${i + 1}</i>${s}</span>`).join('');
+
+  // the three real pages
+  $('f-phone').src = '/index.html';
+  $('f-console').src = '/console.html#key=' + KEY;
+  let stageLoaded = false;
+
+  const SC = window.SC = {};
+  SC.mode = (m) => {
+    if (m === 'stage' && !stageLoaded) { $('f-stage').src = '/stage.html#key=' + KEY; stageLoaded = true; }
+    for (const p of document.querySelectorAll('.pane')) p.classList.toggle('on', p.id === 'p-' + m);
+    for (const h of document.querySelectorAll('.heads > div')) h.classList.toggle('on', h.dataset.h === m);
+    SC.current = m;
+  };
+  SC.preloadStage = () => { if (!stageLoaded) { $('f-stage').src = '/stage.html#key=' + KEY; stageLoaded = true; } };
+  SC.step = (n) => {
+    for (const s of document.querySelectorAll('.step')) {
+      const i = +s.dataset.i;
+      s.classList.toggle('on', i === n);
+      s.classList.toggle('done', i < n);
+    }
+  };
+  SC.caption = (n, title, text) => {
+    const body = $('cap-body'), num = $('cap-n');
+    body.classList.add('out'); num.classList.add('out');
+    setTimeout(() => {
+      num.textContent = n; $('cap-t').textContent = title; $('cap-s').textContent = text || '';
+      body.classList.remove('out'); num.classList.remove('out');
+    }, 360);
+    SC.step(n);
+  };
+  SC.speed = (f) => {
+    const s = $('speed');
+    s.textContent = f > 1 ? `▶▶ ${f}× speed` : '';
+    s.classList.toggle('on', f > 1);
+  };
+  let clockStart = null;
+  SC.clock = (startMs, label) => { clockStart = startMs; SC.clockLabel = label || 'since the round opened'; };
+  setInterval(() => {
+    if (!clockStart) return;
+    const s = Math.max(0, Math.floor((Date.now() - clockStart) / 1000));
+    $('clock').innerHTML = `<span class="live-dot"></span>${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')} ${SC.clockLabel}`;
+  }, 250);
+
+  SC.card = (which, on, data = {}) => {
+    if (which === 'title' && data.fine) $('title-fine').textContent = data.fine;
+    if (which === 'end') {
+      $('end-stats').innerHTML = (data.stats || []).map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+      $('end-line').textContent = data.line || '';
+      $('end-fine').textContent = data.fine || '';
+    }
+    $(which + '-card').classList.toggle('on', on);
+  };
+
+  // geometry of an element inside one of the real pages, in this page's coordinates
+  SC.rect = (frame, sel, opts = {}) => {
+    const f = $('f-' + frame);
+    const doc = f && f.contentDocument;
+    const n = doc && doc.querySelector(sel);
+    if (!n) return null;
+    const fr = f.getBoundingClientRect();
+    const k = fr.width / f.offsetWidth;
+    const r = n.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const cs = f.contentWindow.getComputedStyle(n);
+    if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity < 0.2) return null;
+    const cx = r.left + r.width * (opts.fx ?? 0.5), cy = r.top + r.height * (opts.fy ?? 0.5);
+    if (cx < 0 || cy < 0 || cx > f.offsetWidth || cy > f.offsetHeight) return null;
+    return { x: Math.round(fr.left + cx * k), y: Math.round(fr.top + cy * k), w: r.width * k, h: r.height * k };
+  };
+  SC.eval = (frame, js) => { const w = $('f-' + frame).contentWindow; return w.eval(js); };
+  SC.scrollTo = (frame, sel, block = 'start') => {
+    const doc = $('f-' + frame).contentDocument;
+    const n = doc && doc.querySelector(sel);
+    if (n) n.scrollIntoView({ behavior: 'smooth', block });
+    return !!n;
+  };
+  SC.finger = (x, y) => {
+    const d = document.createElement('div');
+    d.className = 'finger'; d.style.left = x + 'px'; d.style.top = y + 'px';
+    document.body.append(d);
+    setTimeout(() => d.remove(), 900);
+  };
+  SC.cursor = (x, y, on = true) => {
+    const c = $('cursor');
+    c.classList.toggle('on', on);
+    if (x != null) { c.style.left = (x - 4) + 'px'; c.style.top = (y - 2) + 'px'; }
+  };
+  SC.press = () => { const c = $('cursor'); c.classList.add('press'); setTimeout(() => c.classList.remove('press'), 180); };
+
+  SC.status = () => {
+    const out = {};
+    try {
+      const cd = $('f-console').contentDocument;
+      out.console = !!(cd && cd.getElementById('app') && !cd.getElementById('app').hidden);
+      out.roundBtn = cd && cd.getElementById('round-btn') ? cd.getElementById('round-btn').textContent.trim() : null;
+    } catch (_) { out.console = false; }
+    try {
+      const pd = $('f-phone').contentDocument;
+      out.phone3d = !!(pd && pd.documentElement.classList.contains('is-3d'));
+      out.phoneText = pd ? (pd.body.innerText || '').slice(0, 120).replace(/\s+/g, ' ') : '';
+      out.pins = pd ? pd.querySelectorAll('.v3d-pin').length : 0;
+      out.go = pd && pd.getElementById('go-3d') ? pd.getElementById('go-3d').textContent.trim() : null;
+      out.sheet = pd && pd.querySelector('.sheet.open') ? pd.querySelector('.sheet.open').dataset.kind : null;
+      out.reveal = !!(pd && pd.querySelector('.reveal-card'));
+    } catch (_) { out.phone = 'err'; }
+    return out;
+  };
+
+  /* ---------------- terminal: the live reviewer-agent stream ---------------- */
+  const T = { since: 0, next: 0, run: null, queue: [], lines: [], done: false, timer: null, sawSet: false, setResult: null, verdict: null };
+  SC.term = T;
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const tl = (cls, html) => { T.queue.push({ cls, html }); };
+  function flush() {
+    const item = T.queue.shift();
+    if (!item) return;
+    const box = $('term-lines');
+    const cur = box.querySelector('.cursor-line');
+    if (cur) cur.remove();
+    const d = document.createElement('div');
+    d.className = 'tl ' + item.cls;
+    d.innerHTML = item.html;
+    box.append(d);
+    if (!T.done || T.queue.length) {
+      const c = document.createElement('div'); c.className = 'tl cursor-line'; c.innerHTML = '<span class="cursor"></span>';
+      box.append(c);
+    }
+    while (box.children.length > 60) box.firstChild.remove();
+  }
+  setInterval(flush, 230);
+  const fmtP = (p) => !p ? '' : Object.entries(p).map(([k, v]) => `<span class="k">${esc(k)}</span>: ${esc(JSON.stringify(v))}`).join(', ');
+  SC.termStart = (sinceSec) => {
+    T.since = sinceSec;
+    $('term-lines').innerHTML = '<div class="tl sys">waiting for the round to close…</div><div class="tl cursor-line"><span class="cursor"></span></div>';
+    if (T.timer) clearInterval(T.timer);
+    T.timer = setInterval(poll, 700);
+  };
+  async function poll() {
+    if (T.done && !T.queue.length) return;
+    let j;
+    try {
+      const r = await fetch(`/api/showcase/agent?from=${T.next}&since=${T.since}`, { headers: { Authorization: 'Bearer ' + KEY }, cache: 'no-store' });
+      j = await r.json();
+    } catch (_) { return; }
+    if (!j.run) return;
+    if (!T.run) {
+      T.run = j.run;
+      $('term-lines').innerHTML = '';
+      tl('cmd', `<span class="ps">PS state\\agent_work&gt;</span> ${esc(j.run.command)}`);
+      const part = j.run.participation || {};
+      tl('stdin', `stdin ← Round ${esc(j.run.round_number)} proposal from the vote tally (sent as data, never as instructions)\n       { ${fmtP(j.run.proposal)} }\n       ${esc(part.participants ?? '?')} participants · ${esc(part.votes ?? '?')} votes`);
+    }
+    for (const L of j.lines) {
+      T.lines.push(L);
+      if (L.k === 'sys') tl('sys', '● ' + esc(L.t));
+      else if (L.k === 'think') tl('think', '✻ ' + esc(L.t));
+      else if (L.k === 'say') tl('say', esc(L.t));
+      else if (L.k === 'call') tl('call', `<span class="dot">⏺</span> <span class="fn">${esc(L.tool)}</span><span class="args">(${esc(L.t)})</span>`);
+      else if (L.k === 'result') {
+        const rv = L.tool === 'set_parameters' || L.tool === 'get_revit_state';
+        tl('result' + (rv ? ' rv' : ''), '⎿  ' + esc(L.t));
+        if (L.tool === 'set_parameters') { T.sawSet = true; T.setResult = L.t; }
+      } else if (L.k === 'verdict') {
+        T.verdict = L.t;
+        tl('verdict', `<span class="v ${esc(L.t)}">${esc(L.t)}</span>${esc(L.applied)}\n\n${esc(L.rationale)}`);
+      }
+    }
+    T.next = j.next;
+    if (j.done) T.done = true;
+  }
+
+  /* ---------------- Revit pane ---------------- */
+  SC.revitBefore = (url) => { $('rv-before').style.backgroundImage = `url("${url}")`; };
+  SC.revitState = (text, cls) => { const c = $('rv-chip'); c.className = 'rv-chip ' + (cls || ''); $('rv-chip-t').textContent = text; };
+  SC.revitList = (items, heading) => {
+    if (heading) $('rv-card-h').textContent = heading;
+    const ol = $('rv-list'); ol.innerHTML = '';
+    $('rv-card').classList.add('on');
+    items.forEach((it, i) => {
+      const li = document.createElement('li');
+      li.textContent = it.text; if (it.check) li.className = 'check';
+      ol.append(li);
+      setTimeout(() => li.classList.add('on'), 450 + i * 650);
+    });
+  };
+  SC.revitAfter = (url, diffUrl) => {
+    const a = $('rv-after'), w = $('rv-wipe');
+    a.style.backgroundImage = `url("${url}")`;
+    if (diffUrl) $('rv-diff').style.backgroundImage = `url("${diffUrl}")`;
+    const t0 = performance.now(), D = 2600;
+    w.style.opacity = 1;
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / D);
+      const e = 1 - Math.pow(1 - p, 3);
+      const x = 100 - e * 100;
+      a.style.clipPath = `inset(0 0 0 ${x}%)`;
+      w.style.left = x + '%';
+      if (p < 1) requestAnimationFrame(tick);
+      else { w.style.opacity = 0; }
+    };
+    requestAnimationFrame(tick);
+  };
+  SC.revitDiff = (on) => { $('rv-diff').classList.toggle('on', on); $('rv-legend').classList.toggle('on', on); if (!on) $('rv-diff').style.opacity = 0; };
+
+  SC.mode('console');
+  SC.caption(1, 'Getting ready', '');
+})();
+</script>
+</body>
+</html>

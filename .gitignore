@@ -36,3 +36,6 @@ rhino/*.3dm
 rhino/*.3dmbak
 
 rhino/*.rhl
+
+# showcase videos (large binaries)
+media/

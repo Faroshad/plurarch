@@ -510,6 +510,9 @@ PROFILES = {
                 "se_glass_share": (40, 2), "fin_depth": (0, 0.1), "skylights_open": (0, 0.6)},
     "rule_violating": {"infill_finish": {"concrete": 0.62, "fritted_glass": 0.28, "aluminium": 0.10},
                        "se_glass_share": (100, 2), "fin_depth": (0.3, 0.1), "skylights_open": (12, 0.8)},
+    # the recorded showcase: lots of glass with thin fins -> the climate rule asks for 0.6 m (MODIFIED)
+    "showcase": {"infill_finish": {"concrete": 0.75, "fritted_glass": 0.17, "aluminium": 0.08},
+                 "se_glass_share": (90, 4), "fin_depth": (0.3, 0.08), "skylights_open": (12, 0.6)},
 }
 
 
