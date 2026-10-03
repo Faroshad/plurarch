@@ -395,7 +395,10 @@ def cmd_run(ctx: Ctx, args) -> None:
         except Exception as e:
             say(f"(QR code not generated: {e})", "dim")
         say(f"Participants join at  {server.join_url}   (same Wi-Fi; QR: {ctx.state_dir / 'qr.png'})", "accent")
-        say(f"Facilitator console   {server.console_url}", "accent")
+        shown = server.console_url
+        if os.environ.get("PLURARCH_HIDE_KEY"):  # screen recordings: never show the facilitator key
+            shown = shown.split("#", 1)[0] + "#key=•••••• (state/facilitator_key.txt)"
+        say(f"Facilitator console   {shown}", "accent")
     say(f"Session '{session['title']}' · watching for closed rounds (Ctrl+C to stop)", "ok")
 
     last_seen = {}

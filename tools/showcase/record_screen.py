@@ -9,10 +9,10 @@ Windows "Do not disturb" so no notification lands in the video. Revit 2027 must 
 revit/LangfordA_Plurarch.rvt open.
 
 Layout (logical px on a 1920x1080 desktop):
-  voting + result   Edge "facilitator console" 0..1280  |  Edge app window "phone" 1280..1920
+  voting + result   Chrome "facilitator console" 0..1280  |  Edge app window "phone" 1280..1920
   review            Windows Terminal 0..960 (orchestrator above, live Claude Code stream below)  |  Revit 960..1920
 The mouse moves with SetCursorPos and clicks/scrolls with SendInput, so what you see is what happens.
-Element positions come from the pages over CDP (Edge runs with its own profile and a debugging port).
+Element positions come from the pages over CDP (Chrome runs with its own blank profile and a debugging port).
 ffmpeg records the desktop with Desktop Duplication (ddagrab, cursor included) and encodes on the GPU.
 Only the other voters are simulated (orchestrator.py simulate --profile showcase).
 """
@@ -51,8 +51,9 @@ STATE = REPO / "state" / "showcase"
 OUT_DIR = REPO / "media"
 PORT = 8790
 CDP_PORT = 9352
-EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-EDGE_PROFILE = STATE / "edge-screen-profile"
+CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+# A blank, isolated profile: no sign-in, no sync, no bookmarks (Edge signs in with the Windows account).
+BROWSER_PROFILE = STATE / "chrome-screen-profile"
 VIEW_NAME = "Plurarch Showcase SE high"
 FFMPEG = shutil.which("ffmpeg") or str(Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Packages/"
                                        "Gyan.FFmpeg.Essentials_Microsoft.Winget.Source_8wekyb3d8bbwe/"
@@ -65,6 +66,9 @@ def log(msg: str) -> None:
 
 # ------------------------------------------------------------------ Win32
 U = ctypes.windll.user32
+U.SetWindowPos.argtypes = [W.HWND, W.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, W.UINT]
+U.SetWindowPos.restype = W.BOOL
+U.GetWindowThreadProcessId.argtypes = [W.HWND, ctypes.POINTER(W.DWORD)]
 try:
     U.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))  # per-monitor v2: every coordinate is physical
 except Exception:
@@ -199,10 +203,46 @@ def place(h, x, y, w, hgt, top: bool = True) -> None:
 
 
 def raise_window(h) -> None:
-    """To the top of the normal windows without taking focus (a click on it activates it, as usual)."""
+    """Bring a window to the front, like clicking it in the taskbar (attach to the foreground thread's
+    input so Windows lets this background process hand the focus over)."""
     flags = SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
     U.SetWindowPos(h, HWND_TOPMOST, 0, 0, 0, 0, flags)
     U.SetWindowPos(h, HWND_NOTOPMOST, 0, 0, 0, 0, flags)
+    k = ctypes.windll.kernel32
+    fg = U.GetForegroundWindow()
+    fg_tid = U.GetWindowThreadProcessId(fg, None) if fg else 0
+    me = k.GetCurrentThreadId()
+    if fg_tid and fg_tid != me:
+        U.AttachThreadInput(me, fg_tid, True)
+    U.BringWindowToTop(h)
+    U.SetForegroundWindow(h)
+    if fg_tid and fg_tid != me:
+        U.AttachThreadInput(me, fg_tid, False)
+
+
+def window_pid(h) -> int:
+    pid = W.DWORD()
+    U.GetWindowThreadProcessId(h, ctypes.byref(pid))
+    return pid.value
+
+
+def pids_with(*parts: str) -> set[int]:
+    cond = " -and ".join(f"$_.CommandLine.Contains('{p}')" for p in parts)
+    r = subprocess.run(["powershell", "-NoProfile", "-Command",
+                        f"Get-CimInstance Win32_Process | Where-Object {{ $_.CommandLine -and {cond} }} | "
+                        "ForEach-Object { $_.ProcessId }"], capture_output=True, text=True)
+    return {int(x) for x in r.stdout.split() if x.strip().isdigit()}
+
+
+def find_own_window(title_part: str, pids: set[int], timeout: float = 20) -> int | None:
+    t_end = time.time() + timeout
+    while time.time() < t_end:
+        for h, t, c in windows():
+            if title_part in t and c == "Chrome_WidgetWin_1" and window_pid(h) in pids:
+                return h
+        time.sleep(0.3)
+        pids = pids | pids_with("chrome.exe", str(BROWSER_PROFILE))
+    return None
 
 
 class Placement(ctypes.Structure):
@@ -372,7 +412,7 @@ def write_cmd(name: str, body: str) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     p = d / name
     p.write_text("@echo off\r\nchcp 65001 >nul\r\n"
-                 f"set PLURARCH_STATE_DIR={STATE}\r\nset PYTHONUTF8=1\r\ncd /d \"{REPO}\"\r\n{body}\r\n", encoding="utf-8")
+                 f"set PLURARCH_STATE_DIR={STATE}\r\nset PYTHONUTF8=1\r\nset PLURARCH_HIDE_KEY=1\r\ncd /d \"{REPO}\"\r\n{body}\r\n", encoding="utf-8")
     return p
 
 
@@ -444,23 +484,31 @@ def main() -> None:
     wt_h = find_window("Plurarch ·", "CASCADIA_HOSTING_WINDOW_CLASS", 20)
     key = (STATE / "facilitator_key.txt").read_text(encoding="utf-8").strip()
 
-    # Edge: console (normal window with its address bar) + phone (app window)
-    kill_matching("msedge.exe", str(EDGE_PROFILE))
-    flags = [f"--user-data-dir={EDGE_PROFILE}", f"--remote-debugging-port={CDP_PORT}", "--no-first-run",
+    # Chrome: console (normal window with its address bar) + phone (app window), own blank profile
+    kill_matching("chrome.exe", str(BROWSER_PROFILE))
+    time.sleep(0.5)
+    shutil.rmtree(BROWSER_PROFILE, ignore_errors=True)
+    flags = [f"--user-data-dir={BROWSER_PROFILE}", f"--remote-debugging-port={CDP_PORT}", "--no-first-run",
              "--no-default-browser-check", "--disable-extensions", "--hide-crash-restore-bubble",
              "--disable-session-crashed-bubble", "--disable-features=msEdgeSidebarV2,msUndersideButton"]
-    subprocess.Popen([EDGE, *flags, "--new-window", f"http://localhost:{PORT}/console.html#key={key}"])
+    subprocess.Popen([CHROME, *flags, "--new-window", f"http://localhost:{PORT}/console.html#key={key}"])
     con_page = cdp_page("/console.html")
-    subprocess.Popen([EDGE, *flags, f"--app=http://localhost:{PORT}/showcase/phone.html"])
+    subprocess.Popen([CHROME, *flags, f"--app=http://localhost:{PORT}/showcase/phone.html"])
     ph_page = cdp_page("/showcase/phone.html")
-    con_h = find_window("Plurarch · facilitator console", "Chrome_WidgetWin_1")
-    ph_h = find_window("Plurarch · phone", "Chrome_WidgetWin_1")
+    own = pids_with("chrome.exe", str(BROWSER_PROFILE))
+    con_h = find_own_window("Plurarch · facilitator console", own)
+    ph_h = find_own_window("Plurarch · phone", own)
     if not (con_h and ph_h and wt_h):
         sys.exit(f"STOP: windows not found (console {con_h}, phone {ph_h}, terminal {wt_h})")
 
     # stack: terminal + Revit behind, console + phone in front; together they cover the whole work area
-    place(wt_h, 0, 0, lw / 2, lh)
-    place(rv_h, lw / 2, 0, lw / 2, lh)
+    split = 860  # review layout: terminal | Revit
+    place(wt_h, 0, 0, split, lh)
+    place(rv_h, split, 0, lw - split, lh)
+    time.sleep(1.0)
+    se_ids = [p["id"] for p in json.loads((REPO / "config" / "langford" / "elements.json").read_text(encoding="utf-8"))
+              ["se_glass_share"]["panels"] if 17 <= p["center"][0] <= 47]  # the middle bays: fins + solid lites
+    rc.call("zoom_to_elements", {"ids": se_ids})  # frame the SE façade in the resized window
     place(con_h, 0, 0, lw * 2 / 3, lh)
     place(ph_h, lw * 2 / 3, 0, lw / 3, lh)
     con, ph = Win(con_page, con_h, "console"), Win(ph_page, ph_h, "phone")
@@ -511,7 +559,7 @@ def main() -> None:
             except Exception:
                 rec.kill()
         log("teardown")
-        kill_matching("msedge.exe", str(EDGE_PROFILE))
+        kill_matching("chrome.exe", str(BROWSER_PROFILE))
         kill_matching("showcase_feed.py", "--follow")
         kill_matching("orchestrator.py", f"--port {PORT}")
         time.sleep(1.0)
@@ -524,6 +572,8 @@ def main() -> None:
             except Exception as e:
                 log(f"reset failed: {e}")
         U.SetWindowPlacement(rv_h, ctypes.byref(rv_place))
+        if not args.rehearse:  # the recording showed this run's console; retire its facilitator key
+            (STATE / "facilitator_key.txt").unlink(missing_ok=True)
     if rec and out4k.exists():
         out1080 = out4k.with_name(out4k.name.replace("_4k", "_1080p"))
         subprocess.run([FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(out4k), "-vf",
@@ -608,12 +658,12 @@ def scenario(con: Win, ph: Win, wt_h: int, rv_h: int, args) -> None:
     wait_for(lambda: (lambda r: r and (r[1] or any(L.get("tool") == "evaluate" for L in r[0])))(agent_lines()), 40, 0.25)
     raise_window(wt_h)
     raise_window(rv_h)
-    move_to(SCREEN_W * 0.30, SCREEN_H * 0.62, 0.8)
+    move_to(SCREEN_W * 0.22, SCREEN_H * 0.70, 0.8)
     wait_for(lambda: (lambda r: r and r[1])(agent_lines()), 150, 0.4)
     time.sleep(2.0)
-    move_to(SCREEN_W * 0.74, SCREEN_H * 0.52, 1.0)   # look at the new fins in Revit
+    move_to(SCREEN_W * 0.80, SCREEN_H * 0.50, 1.0)   # look at the new fins in Revit
     time.sleep(4.0)
-    move_to(SCREEN_W * 0.30, SCREEN_H * 0.80, 0.9)   # and the verdict in the terminal
+    move_to(SCREEN_W * 0.22, SCREEN_H * 0.82, 0.9)   # and the verdict in the terminal
     time.sleep(4.0)
 
     # back to the console and the phone: everyone sees the result
