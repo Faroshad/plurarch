@@ -749,6 +749,13 @@ function paramsFrom(source) {
     if (v == null) v = p.default;
     out[p.key] = p.type === 'slider' ? toNum(v) : String(v);
   }
+  // The reviewer's roof-lantern layout (which panels stay glass, from the Rhino daylight study) belongs to the
+  // applied design: draw it whenever the shown amount of roof glass is the applied one.
+  const applied = (S.decision && S.decision.applied_parameters) || {};
+  if (applied.skylight_mask && toNum(out.skylights_open) === toNum(applied.skylights_open)) {
+    out.skylight_mask = String(applied.skylight_mask);
+    if (applied.skylight_layout) out.skylight_layout = String(applied.skylight_layout);
+  }
   return out;
 }
 

@@ -549,6 +549,10 @@ function appliedParams(d) {
     if (v === undefined) v = p.default;
     out[p.key] = p.type === 'slider' ? num(v, num(p.default, p.min)) : String(v);
   }
+  if (applied.skylight_mask) { // the reviewer's lantern-panel layout (Rhino daylight study)
+    out.skylight_mask = String(applied.skylight_mask);
+    if (applied.skylight_layout) out.skylight_layout = String(applied.skylight_layout);
+  }
   return out;
 }
 
