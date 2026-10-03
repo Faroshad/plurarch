@@ -9,7 +9,7 @@
 //     Every question is a pin on its element; a pin opens a bottom sheet with the stepper's controls
 //     and the model rebuilds live from the draft. Moments: a "Vote now" splash when a round opens, a
 //     check pop on submit, and a full-screen decision reveal that collapses into the verdict chip.
-//     Rules, privacy, the question list and "List view" live in the (i) sheet.
+//     A one-paragraph "About", the question list and "List view" live in the (i) sheet.
 //   - List view: the original page with the one-question-per-screen stepper and the design drawing.
 //     It is also the fallback whenever WebGL2 or the CDN is unavailable.
 // URL flags for testing: ?v3d=0 forces the fallback, ?q=0|1|2 pins the 3D quality tier, ?debug=1.
@@ -551,7 +551,7 @@ function viewReviewing(round) {
     el('div', { class: 'p-decision anim-slide-up' },
       el('div', { class: 'p-icon-circle soft' }, icon('loader-circle', 24, 'spin')),
       el('h1', { class: 'p-state-title', text: voted ? 'The reviewer agent is reviewing your proposal…' : "The reviewer agent is reviewing the room's proposal…" }),
-      el('p', { class: 'p-state-text', text: `${roundName(round.number)} is closed. The agent checks the hard rules and the brief's goals, tries alternatives if needed, and applies the result to the model.` }),
+      el('p', { class: 'p-state-text', text: `${roundName(round.number)} is closed. The AI reviewer is checking the room's choice.` }),
     ),
     designTile(),
   );
@@ -1278,37 +1278,19 @@ function openQuestionsList(opener) {
   renderQuestionRows();
 }
 
+// One short paragraph about the whole purpose (config: use-case profile "about"). The detailed
+// rules and goals are deliberately not shown on phones: the talk is short, and the reviewer
+// explains every decision anyway.
 function infoSections(prefix) {
-  const b = S.cfg.brief;
   const p = S.cfg.profile;
-  const rules = b.hard_rules.map((r) => el('li', { text: String(r.plain || r.label || '') }));
-  const goals = b.goals.map((g) => el('li', { text: String(g.plain || g.label || '') }));
-  const margin = toNum(b.close_tradeoff_margin);
-  const closeCall = Number.isFinite(margin) && margin > 0
-    ? ` A goal missed by ${fmtNum(margin)} index points or less is a close call, and close calls go to the room.`
-    : ' Close calls go to the room.';
-  const sections = [
-    el('section', { class: 'notice', 'aria-labelledby': `${prefix}-rules-title` },
+  const about = p.about || p.privacy_notice || '';
+  return [
+    el('section', { class: 'notice', 'aria-labelledby': `${prefix}-about-title` },
       el('span', { class: 'notice-icon' }, icon('info', 20)),
-      el('h2', { class: 'notice-title t-title', id: `${prefix}-rules-title`, text: 'Rules of the game' }),
-      b.narrative ? el('p', { class: 't-secondary', text: b.narrative }) : null,
-      rules.length ? el('p', null, el('b', { text: 'Hard rules, never broken' })) : null,
-      rules.length ? el('ul', null, rules) : null,
-      goals.length ? el('p', null, el('b', { text: 'Goals of the brief' })) : null,
-      goals.length ? el('ul', null, goals) : null,
-      el('p', { text: 'The reviewer agent decides in a strict order: hard rules first, then the brief’s goals, then your votes. It overrules the room only for a measurable reason, never on taste.' + closeCall }),
-      el('p', { class: 't-secondary', text: 'Metrics are indicative: simple, documented proxies, not simulations.' }),
+      el('h2', { class: 'notice-title t-title', id: `${prefix}-about-title`, text: 'About Plurarch' }),
+      el('p', { text: about }),
     ),
   ];
-  if (p.privacy_notice) {
-    sections.push(el('div', { class: 'p-divider', 'aria-hidden': 'true' }));
-    sections.push(el('section', { class: 'notice', 'aria-labelledby': `${prefix}-privacy-title` },
-      el('span', { class: 'notice-icon' }, icon('info', 20)),
-      el('h2', { class: 'notice-title t-title', id: `${prefix}-privacy-title`, text: 'Privacy' }),
-      el('p', { text: p.privacy_notice }),
-    ));
-  }
-  return sections;
 }
 
 function openInfoSheet(opener) {
@@ -1318,7 +1300,7 @@ function openInfoSheet(opener) {
     kind: 'info', opener,
     content: [
       sheetHead(S.cfg.profile.session_title || 'Plurarch'),
-      el('h2', { class: 'sr-only', id: 'sheet-title', tabindex: '-1', text: 'Rules of the game and privacy' }),
+      el('h2', { class: 'sr-only', id: 'sheet-title', tabindex: '-1', text: 'About Plurarch' }),
       el('div', { class: 'sheet-actions' },
         voting ? el('button', { class: 'btn btn-gray', type: 'button', onclick: () => openQuestionsList(dom.infoBtn) },
           icon('list-checks', 18), `All questions · ${n}/${S.cfg.params.length}`) : null,

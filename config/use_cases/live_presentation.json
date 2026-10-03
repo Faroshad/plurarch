@@ -11,6 +11,7 @@
   "agent_timeout_s": 120,
   "agent_model": "sonnet",
   "privacy_notice": "You are anonymous. Only your votes are recorded, for this session only. No names, no accounts, no tracking.",
+  "about": "Plurarch lets this room reshape a real building: Langford A at Texas A&M. Tap the pins on the model to vote on four changes to its studio façade and roof. When voting closes, an AI reviewer checks the room's choice against the project brief (daylight, heat, cost, carbon and heritage), then keeps it, adjusts it or rejects it with a reason, and applies the result to the real Revit model. You are anonymous: only your votes are recorded.",
   "facilitator_label": "Facilitator",
   "participant_label": "Participant"
 }
